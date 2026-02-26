@@ -1,7 +1,6 @@
 'use client'
 
-import { useState, useCallback } from 'react'
-import ApiKeyInput from '@/components/ApiKeyInput'
+import { useState } from 'react'
 import ImageUploader from '@/components/ImageUploader'
 import InputForm from '@/components/InputForm'
 import PromptList from '@/components/PromptList'
@@ -23,7 +22,6 @@ const DEFAULT_INPUTS: UserInputs = {
 }
 
 export default function Home() {
-  const [apiKey, setApiKey] = useState('')
   const [images, setImages] = useState<ImageInput[]>([])
   const [userInputs, setUserInputs] = useState<UserInputs>(DEFAULT_INPUTS)
   const [promptCount, setPromptCount] = useState(4)
@@ -31,16 +29,7 @@ export default function Home() {
   const [result, setResult] = useState<GenerateResult | null>(null)
   const [error, setError] = useState<string | null>(null)
 
-  const handleKeyChange = useCallback((key: string) => {
-    setApiKey(key)
-  }, [])
-
   async function handleGenerate() {
-    if (!apiKey.trim()) {
-      setError('Please save your OpenRouter API key first.')
-      return
-    }
-
     const hasImages = images.length > 0
     const hasInputs = Object.values(userInputs).some((v) => v.trim())
 
@@ -70,7 +59,6 @@ export default function Home() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          apiKey,
           images: serializedImages,
           userInputs,
           promptCount,
@@ -112,11 +100,6 @@ export default function Home() {
             Generate Flux 2 prompts from reference images and concept descriptions.
           </p>
         </div>
-
-        <div className="border-t border-neutral-100" />
-
-        {/* API Key */}
-        <ApiKeyInput onKeyChange={handleKeyChange} />
 
         <div className="border-t border-neutral-100" />
 

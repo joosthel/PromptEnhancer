@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { callOpenRouter, parseJsonResponse, ContentPart } from '@/lib/openrouter'
-
-export const maxDuration = 120 // Allow up to 2 minutes for the two-step pipeline
 import {
   GEMINI_VISION_PROMPT,
   buildMiniMaxSystemPrompt,
@@ -10,8 +8,9 @@ import {
   VisualStyleCues,
 } from '@/lib/system-prompt'
 
+export const maxDuration = 120 // Allow up to 2 minutes for the two-step pipeline
+
 export interface GenerateRequest {
-  apiKey: string
   images: Array<
     { type: 'base64'; data: string; mimeType: string } | { type: 'url'; url: string }
   >
@@ -25,13 +24,18 @@ export interface GenerateResponse {
 }
 
 export async function POST(request: NextRequest) {
+  const apiKey = process.env.OPENROUTER_API_KEY
+
+  if (!apiKey?.trim()) {
+    return NextResponse.json(
+      { error: 'OPENROUTER_API_KEY is not set. Add it to your .env.local file.' },
+      { status: 500 }
+    )
+  }
+
   try {
     const body: GenerateRequest = await request.json()
-    const { apiKey, images, userInputs, promptCount } = body
-
-    if (!apiKey?.trim()) {
-      return NextResponse.json({ error: 'API key is required' }, { status: 400 })
-    }
+    const { images, userInputs, promptCount } = body
 
     const hasImages = Array.isArray(images) && images.length > 0
     const hasUserInputs = Object.values(userInputs).some((v) => v?.trim())
