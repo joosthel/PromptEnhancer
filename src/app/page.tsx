@@ -81,6 +81,17 @@ export default function Home() {
     }
   }
 
+  function handlePromptUpdate(index: number, newPrompt: string) {
+    setResult((prev) =>
+      prev
+        ? {
+            ...prev,
+            prompts: prev.prompts.map((p, i) => (i === index ? { ...p, prompt: newPrompt } : p)),
+          }
+        : prev
+    )
+  }
+
   const isLoading = loadingPhase === 'analyzing' || loadingPhase === 'generating'
 
   const loadingText =
@@ -136,7 +147,12 @@ export default function Home() {
         {result && (
           <>
             <div className="border-t border-neutral-100" />
-            <PromptList prompts={result.prompts} visualStyleCues={result.visualStyleCues} />
+            <PromptList
+              prompts={result.prompts}
+              visualStyleCues={result.visualStyleCues}
+              userInputs={userInputs}
+              onPromptUpdate={handlePromptUpdate}
+            />
           </>
         )}
       </div>

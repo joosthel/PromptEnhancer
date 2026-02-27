@@ -1,16 +1,56 @@
+/**
+ * @file PromptList.tsx
+ * Renders the generated prompt set: an optional collapsible visual style panel,
+ * then a list of {@link PromptCard} components.
+ *
+ * Owns the revision orchestration: a single `revisingIndex` ensures only one card
+ * is in-flight at a time. Calls `/api/revise` and delegates the result back to
+ * the parent via `onPromptUpdate`.
+ *
+ * Props:
+ *   - prompts / visualStyleCues: the generated output from /api/generate
+ *   - userInputs: forwarded to /api/revise as scene context
+ *   - onPromptUpdate: parent callback to update a single prompt in-place
+ */
 'use client'
 
 import { useState } from 'react'
-import { VisualStyleCues } from '@/lib/system-prompt'
+import { VisualStyleCues, UserInputs } from '@/lib/system-prompt'
 import PromptCard from './PromptCard'
 
 interface PromptListProps {
   prompts: Array<{ label: string; prompt: string }>
   visualStyleCues?: VisualStyleCues
+  userInputs: UserInputs
+  onPromptUpdate: (index: number, newPrompt: string) => void
 }
 
-export default function PromptList({ prompts, visualStyleCues }: PromptListProps) {
+export default function PromptList({ prompts, visualStyleCues, userInputs, onPromptUpdate }: PromptListProps) {
   const [showCues, setShowCues] = useState(false)
+  const [revisingIndex, setRevisingIndex] = useState<number | null>(null)
+
+  async function handleRevise(index: number, revisionNote: string): Promise<void> {
+    setRevisingIndex(index)
+    try {
+      const res = await fetch('/api/revise', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          prompt: prompts[index].prompt,
+          label: prompts[index].label,
+          revisionNote,
+          userInputs,
+          visualStyleCues,
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error ?? `Request failed with status ${res.status}`)
+      onPromptUpdate(index, data.prompt)
+    } finally {
+      setRevisingIndex(null)
+    }
+    // Errors propagate to PromptCard.handleApply catch
+  }
 
   return (
     <div className="space-y-6">
@@ -75,7 +115,14 @@ export default function PromptList({ prompts, visualStyleCues }: PromptListProps
 
       <div className="space-y-3">
         {prompts.map((p, i) => (
-          <PromptCard key={i} label={p.label} prompt={p.prompt} index={i} />
+          <PromptCard
+            key={i}
+            label={p.label}
+            prompt={p.prompt}
+            index={i}
+            onRevise={handleRevise}
+            isRevising={revisingIndex === i}
+          />
         ))}
       </div>
     </div>

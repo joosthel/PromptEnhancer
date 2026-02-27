@@ -1,3 +1,15 @@
+/**
+ * @file ImageUploader.tsx
+ * Reference image input panel. Accepts images via drag-and-drop, file picker,
+ * global clipboard paste (Cmd/Ctrl+V), and direct URL entry.
+ *
+ * Uploaded files are resized and compressed client-side via {@link fileToImageInput}
+ * before being stored as {@link ImageInput} values. A maximum of 5 images is enforced.
+ *
+ * Props:
+ *   - images: current list of reference images
+ *   - onChange: callback to update the image list in the parent
+ */
 'use client'
 
 import { useState, useRef, useEffect, useCallback, DragEvent } from 'react'

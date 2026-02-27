@@ -1,3 +1,13 @@
+/**
+ * @file InputForm.tsx
+ * Creative input form with four fields (Storyline, Subject, Environment, Mood)
+ * and a prompt-count selector (3–6). All fields are optional — the form accepts
+ * any combination of filled and empty inputs.
+ *
+ * Props:
+ *   - values / onChange: controlled state for the four {@link UserInputs} fields
+ *   - promptCount / onPromptCountChange: controlled state for the shot count selector
+ */
 'use client'
 
 import { UserInputs } from '@/lib/system-prompt'
