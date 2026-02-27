@@ -4,7 +4,7 @@
  * global clipboard paste (Cmd/Ctrl+V), and direct URL entry.
  *
  * Uploaded files are resized and compressed client-side via {@link fileToImageInput}
- * before being stored as {@link ImageInput} values. A maximum of 5 images is enforced.
+ * before being stored as {@link ImageInput} values. A maximum of 10 images is enforced.
  *
  * Props:
  *   - images: current list of reference images
@@ -15,7 +15,7 @@
 import { useState, useRef, useEffect, useCallback, DragEvent } from 'react'
 import { ImageInput, fileToImageInput, extractImageFromClipboard, isValidImageUrl } from '@/lib/image-utils'
 
-const MAX_IMAGES = 5
+const MAX_IMAGES = 10
 const MAX_FILE_SIZE_MB = 10
 
 interface ImageUploaderProps {

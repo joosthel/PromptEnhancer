@@ -67,10 +67,9 @@ export default function PromptList({ prompts, visualStyleCues, userInputs, onPro
           </button>
 
           {showCues && (
-            <div className="px-4 pb-4 space-y-3 border-t border-neutral-100">
+            <div className="px-4 pb-4 space-y-4 border-t border-neutral-100">
               {visualStyleCues.hexPalette?.length > 0 && (
                 <div className="flex items-center gap-3 pt-3">
-                  <span className="text-xs text-neutral-400 w-20 flex-shrink-0">Palette</span>
                   <div className="flex gap-1.5">
                     {visualStyleCues.hexPalette.map((hex, i) => (
                       <div
@@ -86,28 +85,18 @@ export default function PromptList({ prompts, visualStyleCues, userInputs, onPro
                   </span>
                 </div>
               )}
-              <div className="flex gap-3">
-                <span className="text-xs text-neutral-400 w-20 flex-shrink-0 pt-0.5">Light</span>
-                <span className="text-xs text-neutral-600">{visualStyleCues.lightQuality}</span>
-              </div>
-              <div className="flex gap-3">
-                <span className="text-xs text-neutral-400 w-20 flex-shrink-0 pt-0.5">
-                  Atmosphere
-                </span>
-                <span className="text-xs text-neutral-600">{visualStyleCues.atmosphere}</span>
-              </div>
-              <div className="flex gap-3">
-                <span className="text-xs text-neutral-400 w-20 flex-shrink-0 pt-0.5">Style</span>
-                <span className="text-xs text-neutral-600">{visualStyleCues.cinematicStyle}</span>
-              </div>
-              {visualStyleCues.colorMood && (
-                <div className="flex gap-3">
-                  <span className="text-xs text-neutral-400 w-20 flex-shrink-0 pt-0.5">
-                    Color Mood
-                  </span>
-                  <span className="text-xs text-neutral-600">{visualStyleCues.colorMood}</span>
+              {visualStyleCues.cinematicKeywords?.length > 0 && (
+                <div className="flex flex-wrap gap-1.5">
+                  {visualStyleCues.cinematicKeywords.map((kw, i) => (
+                    <span key={i} className="text-xs px-2 py-0.5 bg-neutral-100 text-neutral-500 rounded-sm font-mono">
+                      {kw}
+                    </span>
+                  ))}
                 </div>
               )}
+              <p className="text-xs text-neutral-600 leading-relaxed whitespace-pre-line">
+                {visualStyleCues.description}
+              </p>
             </div>
           )}
         </div>

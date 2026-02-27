@@ -59,10 +59,13 @@ function buildReviseUserMessage(
   if (userInputs.mood.trim()) lines.push(`Mood/Feeling: ${userInputs.mood}`)
 
   if (visualStyleCues) {
-    lines.push(`Color Mood: ${visualStyleCues.colorMood}`)
-    lines.push(`Light Quality: ${visualStyleCues.lightQuality}`)
-    lines.push(`Atmosphere: ${visualStyleCues.atmosphere}`)
-    lines.push(`Cinematic Style: ${visualStyleCues.cinematicStyle}`)
+    lines.push('')
+    lines.push('=== VISUAL REFERENCE (from user-selected images) ===')
+    lines.push(visualStyleCues.description)
+    lines.push(`Color Palette: ${visualStyleCues.hexPalette.join(', ')}`)
+    if (visualStyleCues.cinematicKeywords?.length) {
+      lines.push(`Cinematic Keywords: ${visualStyleCues.cinematicKeywords.join(' | ')}`)
+    }
   }
 
   return lines.join('\n')
