@@ -44,10 +44,10 @@ Replace `sk-or-v1-...` with your actual key from [openrouter.ai/keys](https://op
 
 ### 3. Run
 
-**macOS / Linux** — double-click or run from terminal:
+**macOS** — double-click `start.command`, or run from terminal:
 
 ```bash
-./start.sh
+./start.command
 ```
 
 **Windows** — double-click `start.bat`, or from a terminal:
