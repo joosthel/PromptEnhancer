@@ -4,8 +4,10 @@ import { useState } from 'react'
 import ImageUploader from '@/components/ImageUploader'
 import InputForm from '@/components/InputForm'
 import PromptList from '@/components/PromptList'
+import ModelBar from '@/components/ModelBar'
 import { ImageInput } from '@/lib/image-utils'
 import { UserInputs, VisualStyleCues } from '@/lib/system-prompt'
+import { TargetModel, DEFAULT_MODEL } from '@/lib/model-profiles'
 
 interface GenerateResult {
   prompts: Array<{ label: string; prompt: string }>
@@ -28,6 +30,7 @@ export default function Home() {
   const [loadingPhase, setLoadingPhase] = useState<LoadingPhase>('idle')
   const [result, setResult] = useState<GenerateResult | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [activeModel, setActiveModel] = useState<TargetModel>(DEFAULT_MODEL)
 
   async function handleGenerate() {
     const hasImages = images.length > 0
@@ -62,6 +65,7 @@ export default function Home() {
           images: serializedImages,
           userInputs,
           promptCount,
+          targetModel: activeModel,
         }),
       })
 
@@ -103,58 +107,66 @@ export default function Home() {
 
   return (
     <main className="min-h-screen bg-[#FAFAFA]">
-      <div className="max-w-2xl mx-auto px-6 py-16 space-y-10">
-        {/* Header */}
-        <div>
-          <h1 className="text-2xl font-medium tracking-tight text-neutral-900">PromptEnhancer</h1>
-          <p className="mt-1 text-sm text-neutral-400">
-            Generate Flux 2 prompts from reference images and concept descriptions.
-          </p>
+      {/* Model Bar - full width at top */}
+      <div className="border-b border-neutral-100">
+        <div className="max-w-7xl mx-auto px-6 py-3 flex items-center justify-between">
+          <div>
+            <h1 className="text-lg font-medium tracking-tight text-neutral-900">PromptEnhancer</h1>
+          </div>
+          <ModelBar activeModel={activeModel} onChange={setActiveModel} />
+        </div>
+      </div>
+
+      {/* Split panel - inputs left, results right */}
+      <div className="max-w-7xl mx-auto px-6 py-8 lg:flex lg:gap-8">
+        {/* Left panel - inputs */}
+        <div className="lg:w-[340px] lg:flex-shrink-0 space-y-6">
+          <ImageUploader images={images} onChange={setImages} />
+          <div className="border-t border-neutral-100" />
+          <InputForm
+            values={userInputs}
+            promptCount={promptCount}
+            onChange={setUserInputs}
+            onPromptCountChange={setPromptCount}
+          />
+
+          {error && (
+            <div className="border border-red-100 bg-red-50 rounded-sm px-4 py-3">
+              <p className="text-sm text-red-600">{error}</p>
+            </div>
+          )}
+
+          <button
+            onClick={handleGenerate}
+            disabled={isLoading}
+            className="w-full py-3 bg-neutral-900 text-white text-sm rounded-sm hover:bg-neutral-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {isLoading ? loadingText : 'Generate Prompts'}
+          </button>
         </div>
 
-        <div className="border-t border-neutral-100" />
-
-        {/* Image Uploader */}
-        <ImageUploader images={images} onChange={setImages} />
-
-        <div className="border-t border-neutral-100" />
-
-        {/* Input Form */}
-        <InputForm
-          values={userInputs}
-          promptCount={promptCount}
-          onChange={setUserInputs}
-          onPromptCountChange={setPromptCount}
-        />
-
-        {/* Error */}
-        {error && (
-          <div className="border border-red-100 bg-red-50 rounded-sm px-4 py-3">
-            <p className="text-sm text-red-600">{error}</p>
-          </div>
-        )}
-
-        {/* Generate Button */}
-        <button
-          onClick={handleGenerate}
-          disabled={isLoading}
-          className="w-full py-3 bg-neutral-900 text-white text-sm rounded-sm hover:bg-neutral-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {isLoading ? loadingText : 'Generate Prompts'}
-        </button>
-
-        {/* Results */}
-        {result && (
-          <>
-            <div className="border-t border-neutral-100" />
+        {/* Right panel - results */}
+        <div className="flex-1 mt-8 lg:mt-0">
+          {result && (
             <PromptList
               prompts={result.prompts}
               visualStyleCues={result.visualStyleCues}
               userInputs={userInputs}
+              activeModel={activeModel}
               onPromptUpdate={handlePromptUpdate}
             />
-          </>
-        )}
+          )}
+          {!result && !isLoading && (
+            <div className="flex items-center justify-center h-64 text-sm text-neutral-300">
+              Results will appear here
+            </div>
+          )}
+          {isLoading && (
+            <div className="flex items-center justify-center h-64 text-sm text-neutral-400">
+              {loadingText}
+            </div>
+          )}
+        </div>
       </div>
     </main>
   )

@@ -1,59 +1,196 @@
-/**
- * @file PromptList.tsx
- * Renders the generated prompt set: an optional collapsible visual style panel,
- * then a list of {@link PromptCard} components.
- *
- * Owns the revision orchestration: a single `revisingIndex` ensures only one card
- * is in-flight at a time. Calls `/api/revise` and delegates the result back to
- * the parent via `onPromptUpdate`.
- *
- * Props:
- *   - prompts / visualStyleCues: the generated output from /api/generate
- *   - userInputs: forwarded to /api/revise as scene context
- *   - onPromptUpdate: parent callback to update a single prompt in-place
- */
 'use client'
 
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
 import { VisualStyleCues, UserInputs } from '@/lib/system-prompt'
+import { TargetModel, FIX_CATEGORIES } from '@/lib/model-profiles'
 import PromptCard from './PromptCard'
+import BatchActions from './BatchActions'
 
 interface PromptListProps {
   prompts: Array<{ label: string; prompt: string }>
   visualStyleCues?: VisualStyleCues
   userInputs: UserInputs
+  activeModel: TargetModel
   onPromptUpdate: (index: number, newPrompt: string) => void
 }
 
-export default function PromptList({ prompts, visualStyleCues, userInputs, onPromptUpdate }: PromptListProps) {
+export default function PromptList({
+  prompts,
+  visualStyleCues,
+  userInputs,
+  activeModel,
+  onPromptUpdate,
+}: PromptListProps) {
   const [showCues, setShowCues] = useState(false)
-  const [revisingIndex, setRevisingIndex] = useState<number | null>(null)
+  const [fixingSet, setFixingSet] = useState<Set<number>>(new Set())
+  const [reformatLoading, setReformatLoading] = useState<Map<number, TargetModel>>(new Map())
+  const [selectedSet, setSelectedSet] = useState<Set<number>>(new Set())
+  const [promptHistory, setPromptHistory] = useState<Map<number, Array<{ prompt: string; fix: string; timestamp: number }>>>(new Map())
+  const [isBatchFixing, setIsBatchFixing] = useState(false)
 
-  async function handleRevise(index: number, revisionNote: string): Promise<void> {
-    setRevisingIndex(index)
+  const handleFix = useCallback(async (index: number, fixCategory: string, customNote?: string) => {
+    setFixingSet((prev) => new Set(prev).add(index))
+
     try {
+      const currentPrompt = prompts[index].prompt
+      const history = promptHistory.get(index) ?? []
+
+      // Determine the revision note and fix category for the API
+      let revisionNote = ''
+      let apiFixCategory: string | undefined
+
+      if (fixCategory === 'custom') {
+        revisionNote = customNote ?? ''
+      } else {
+        apiFixCategory = fixCategory
+        const cat = FIX_CATEGORIES.find((c) => c.id === fixCategory)
+        revisionNote = cat?.label ?? fixCategory
+      }
+
       const res = await fetch('/api/revise', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          prompt: currentPrompt,
+          label: prompts[index].label,
+          revisionNote: fixCategory === 'custom' ? (customNote ?? '') : '',
+          fixCategory: apiFixCategory,
+          history: history.map((h) => ({ prompt: h.prompt, fix: h.fix })),
+          userInputs,
+          visualStyleCues,
+          targetModel: activeModel,
+        }),
+      })
+
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error ?? `Request failed with status ${res.status}`)
+
+      // Update history
+      const fixLabel = fixCategory === 'custom' ? (customNote ?? 'Custom fix') : revisionNote
+      const newHistoryEntry = {
+        prompt: currentPrompt,
+        fix: fixLabel,
+        timestamp: Date.now(),
+      }
+      const updatedHistory = [...history, newHistoryEntry]
+
+      setPromptHistory((prev) => {
+        const next = new Map(prev)
+        next.set(index, updatedHistory)
+        return next
+      })
+
+      onPromptUpdate(index, data.prompt)
+    } finally {
+      setFixingSet((prev) => {
+        const next = new Set(prev)
+        next.delete(index)
+        return next
+      })
+    }
+  }, [prompts, promptHistory, userInputs, visualStyleCues, activeModel, onPromptUpdate])
+
+  const handleBatchFix = useCallback(async (fixCategory: string) => {
+    setIsBatchFixing(true)
+
+    // Parse custom batch fix
+    let category = fixCategory
+    let customNote: string | undefined
+    if (fixCategory.startsWith('custom:')) {
+      customNote = fixCategory.slice(7)
+      category = 'custom'
+    }
+
+    const indices = Array.from(selectedSet)
+    try {
+      await Promise.all(indices.map((i) => handleFix(i, category, customNote)))
+    } finally {
+      setIsBatchFixing(false)
+    }
+  }, [selectedSet, handleFix])
+
+  const handleReformat = useCallback(async (index: number, toModel: TargetModel) => {
+    if (toModel === activeModel) return
+
+    setReformatLoading((prev) => {
+      const next = new Map(prev)
+      next.set(index, toModel)
+      return next
+    })
+
+    try {
+      const res = await fetch('/api/reformat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           prompt: prompts[index].prompt,
           label: prompts[index].label,
-          revisionNote,
-          userInputs,
-          visualStyleCues,
+          fromModel: activeModel,
+          toModel,
         }),
       })
+
       const data = await res.json()
       if (!res.ok) throw new Error(data.error ?? `Request failed with status ${res.status}`)
+
       onPromptUpdate(index, data.prompt)
     } finally {
-      setRevisingIndex(null)
+      setReformatLoading((prev) => {
+        const next = new Map(prev)
+        next.delete(index)
+        return next
+      })
     }
-    // Errors propagate to PromptCard.handleApply catch
+  }, [prompts, activeModel, onPromptUpdate])
+
+  const handleRestore = useCallback((index: number, historyIndex: number) => {
+    const history = promptHistory.get(index)
+    if (!history || historyIndex >= history.length) return
+
+    const restoredPrompt = history[historyIndex].prompt
+    onPromptUpdate(index, restoredPrompt)
+
+    // Trim history to the restored point
+    setPromptHistory((prev) => {
+      const next = new Map(prev)
+      next.set(index, history.slice(0, historyIndex))
+      return next
+    })
+  }, [promptHistory, onPromptUpdate])
+
+  function toggleSelect(index: number) {
+    setSelectedSet((prev) => {
+      const next = new Set(prev)
+      if (next.has(index)) {
+        next.delete(index)
+      } else {
+        next.add(index)
+      }
+      return next
+    })
+  }
+
+  function selectAll() {
+    setSelectedSet(new Set(prompts.map((_, i) => i)))
+  }
+
+  function deselectAll() {
+    setSelectedSet(new Set())
   }
 
   return (
     <div className="space-y-6">
+      {/* Batch Actions */}
+      <BatchActions
+        totalCount={prompts.length}
+        selectedCount={selectedSet.size}
+        onSelectAll={selectAll}
+        onDeselectAll={deselectAll}
+        onBatchFix={handleBatchFix}
+        isBatchFixing={isBatchFixing}
+      />
+
+      {/* Visual Style Cues */}
       {visualStyleCues && (
         <div className="border border-neutral-200 rounded-sm">
           <button
@@ -63,7 +200,7 @@ export default function PromptList({ prompts, visualStyleCues, userInputs, onPro
             <span className="text-xs uppercase tracking-widest text-neutral-400">
               Visual Inspiration
             </span>
-            <span className="text-neutral-400 text-sm">{showCues ? '−' : '+'}</span>
+            <span className="text-neutral-400 text-sm">{showCues ? '\u2212' : '+'}</span>
           </button>
 
           {showCues && (
@@ -81,7 +218,7 @@ export default function PromptList({ prompts, visualStyleCues, userInputs, onPro
                     ))}
                   </div>
                   <span className="text-xs text-neutral-400 font-mono">
-                    {visualStyleCues.hexPalette.join(' · ')}
+                    {visualStyleCues.hexPalette.join(' \u00b7 ')}
                   </span>
                 </div>
               )}
@@ -102,6 +239,7 @@ export default function PromptList({ prompts, visualStyleCues, userInputs, onPro
         </div>
       )}
 
+      {/* Prompt Cards */}
       <div className="space-y-3">
         {prompts.map((p, i) => (
           <PromptCard
@@ -109,8 +247,15 @@ export default function PromptList({ prompts, visualStyleCues, userInputs, onPro
             label={p.label}
             prompt={p.prompt}
             index={i}
-            onRevise={handleRevise}
-            isRevising={revisingIndex === i}
+            activeModel={activeModel}
+            history={promptHistory.get(i) ?? []}
+            isSelected={selectedSet.has(i)}
+            onToggleSelect={() => toggleSelect(i)}
+            onFix={(fixCategory, customNote) => handleFix(i, fixCategory, customNote)}
+            onRestore={(historyIndex) => handleRestore(i, historyIndex)}
+            onModelReformat={(toModel) => handleReformat(i, toModel)}
+            isFixing={fixingSet.has(i)}
+            reformatLoadingModel={reformatLoading.get(i) ?? null}
           />
         ))}
       </div>

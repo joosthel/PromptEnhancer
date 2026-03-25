@@ -1,12 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { callOpenRouter, parseJsonResponse, ContentPart } from '@/lib/openrouter'
-import {
-  GEMINI_VISION_PROMPT,
-  buildMiniMaxSystemPrompt,
-  buildMiniMaxUserMessage,
-  UserInputs,
-  VisualStyleCues,
-} from '@/lib/system-prompt'
+import { GEMINI_VISION_PROMPT, UserInputs, VisualStyleCues } from '@/lib/system-prompt'
+import { buildSystemPrompt, buildUserMessage } from '@/lib/prompt-engine'
+import { TargetModel } from '@/lib/model-profiles'
 
 export const maxDuration = 120 // Allow up to 2 minutes for the two-step pipeline
 
@@ -16,11 +12,13 @@ export interface GenerateRequest {
   >
   userInputs: UserInputs
   promptCount: number
+  targetModel?: TargetModel
 }
 
 export interface GenerateResponse {
   prompts: Array<{ label: string; prompt: string }>
   visualStyleCues?: VisualStyleCues
+  targetModel: TargetModel
 }
 
 export async function POST(request: NextRequest) {
@@ -35,7 +33,8 @@ export async function POST(request: NextRequest) {
 
   try {
     const body: GenerateRequest = await request.json()
-    const { images, userInputs, promptCount } = body
+    const { images, userInputs, promptCount, targetModel: rawTargetModel } = body
+    const targetModel: TargetModel = rawTargetModel ?? 'flux-2-pro'
 
     const hasImages = Array.isArray(images) && images.length > 0
     const hasUserInputs = Object.values(userInputs).some((v) => v?.trim())
@@ -82,14 +81,14 @@ export async function POST(request: NextRequest) {
     }
 
     // Step 2: Prompt generation with MiniMax M2.5
-    const userMessage = buildMiniMaxUserMessage(userInputs, promptCount, visualStyleCues)
+    const userMessage = buildUserMessage(userInputs, promptCount, targetModel, visualStyleCues)
 
     const promptResponse = await callOpenRouter({
       model: 'minimax/minimax-m2.5',
       apiKey,
       responseFormat: 'json_object',
       messages: [
-        { role: 'system', content: buildMiniMaxSystemPrompt() },
+        { role: 'system', content: buildSystemPrompt(targetModel) },
         { role: 'user', content: userMessage },
       ],
     })
@@ -108,6 +107,7 @@ export async function POST(request: NextRequest) {
     const response: GenerateResponse = {
       prompts: parsed.prompts,
       visualStyleCues,
+      targetModel,
     }
 
     return NextResponse.json(response)

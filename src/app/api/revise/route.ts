@@ -2,14 +2,16 @@
  * @file route.ts
  * POST /api/revise — Revises a single generated prompt in-place.
  *
- * Accepts the original prompt, its shot label, a plain-English revision instruction,
- * and optional context (user inputs, visual style cues). Calls MiniMax M2.5 with
- * the same DoP system voice used during generation, returning only the revised prompt text.
+ * Accepts the original prompt, its shot label, a plain-English revision instruction
+ * and/or a fix category, optional history, and context (user inputs, visual style cues).
+ * Calls MiniMax M2.5 with model-aware system prompt, returning the revised prompt text.
  */
 
 import { NextRequest, NextResponse } from 'next/server'
 import { callOpenRouter, parseJsonResponse } from '@/lib/openrouter'
-import { buildMiniMaxSystemPrompt, UserInputs, VisualStyleCues } from '@/lib/system-prompt'
+import { UserInputs, VisualStyleCues } from '@/lib/system-prompt'
+import { buildRevisionSystemPrompt, buildRevisionUserMessage } from '@/lib/prompt-engine'
+import { TargetModel } from '@/lib/model-profiles'
 
 export const maxDuration = 60 // Single model call — no vision step needed
 
@@ -18,57 +20,16 @@ export interface ReviseRequest {
   prompt: string
   label: string
   revisionNote: string
+  fixCategory?: string
+  history?: Array<{ prompt: string; fix: string }>
   userInputs: UserInputs
   visualStyleCues?: VisualStyleCues
+  targetModel?: TargetModel
 }
 
 /** Response body: the revised prompt text only. */
 export interface ReviseResponse {
   prompt: string
-}
-
-/**
- * Builds the user-turn message for the MiniMax revision call.
- * Provides the original prompt, revision instruction, and original scene context
- * so the model changes only what the instruction requires.
- */
-function buildReviseUserMessage(
-  prompt: string,
-  label: string,
-  revisionNote: string,
-  userInputs: UserInputs,
-  visualStyleCues?: VisualStyleCues
-): string {
-  const lines: string[] = [
-    'Revise the following Flux 2 [pro] prompt according to the revision instruction.',
-    'Return ONLY valid JSON: { "prompt": "..." }',
-    `Shot label: ${label}`,
-    '',
-    '=== ORIGINAL PROMPT ===',
-    prompt,
-    '',
-    '=== REVISION INSTRUCTION ===',
-    revisionNote,
-    '',
-    '=== ORIGINAL SCENE CONTEXT (do not change unless the instruction requires it) ===',
-  ]
-
-  if (userInputs.storyline.trim()) lines.push(`Storyline/Concept: ${userInputs.storyline}`)
-  if (userInputs.subject.trim()) lines.push(`Subject: ${userInputs.subject}`)
-  if (userInputs.environment.trim()) lines.push(`Environment: ${userInputs.environment}`)
-  if (userInputs.mood.trim()) lines.push(`Mood/Feeling: ${userInputs.mood}`)
-
-  if (visualStyleCues) {
-    lines.push('')
-    lines.push('=== VISUAL REFERENCE (from user-selected images) ===')
-    lines.push(visualStyleCues.description)
-    lines.push(`Color Palette: ${visualStyleCues.hexPalette.join(', ')}`)
-    if (visualStyleCues.cinematicKeywords?.length) {
-      lines.push(`Cinematic Keywords: ${visualStyleCues.cinematicKeywords.join(' | ')}`)
-    }
-  }
-
-  return lines.join('\n')
 }
 
 export async function POST(request: NextRequest) {
@@ -83,23 +44,33 @@ export async function POST(request: NextRequest) {
 
   try {
     const body: ReviseRequest = await request.json()
-    const { prompt, label, revisionNote, userInputs, visualStyleCues } = body
+    const { prompt, label, revisionNote, fixCategory, history, userInputs, visualStyleCues, targetModel: rawTargetModel } = body
+    const targetModel: TargetModel = rawTargetModel ?? 'flux-2-pro'
 
-    if (!prompt?.trim() || !revisionNote?.trim()) {
+    if (!prompt?.trim()) {
       return NextResponse.json(
-        { error: 'Both prompt and revisionNote are required.' },
+        { error: 'prompt is required.' },
         { status: 400 }
       )
     }
 
-    const userMessage = buildReviseUserMessage(prompt, label, revisionNote, userInputs, visualStyleCues)
+    if (!revisionNote?.trim() && !fixCategory?.trim()) {
+      return NextResponse.json(
+        { error: 'Either revisionNote or fixCategory is required.' },
+        { status: 400 }
+      )
+    }
+
+    const userMessage = buildRevisionUserMessage(
+      prompt, label, revisionNote, fixCategory, history, userInputs, visualStyleCues
+    )
 
     const reviseResponse = await callOpenRouter({
       model: 'minimax/minimax-m2.5',
       apiKey,
       responseFormat: 'json_object',
       messages: [
-        { role: 'system', content: buildMiniMaxSystemPrompt() },
+        { role: 'system', content: buildRevisionSystemPrompt(targetModel) },
         { role: 'user', content: userMessage },
       ],
     })
