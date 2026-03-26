@@ -1,91 +1,75 @@
-/**
- * @file InputForm.tsx
- * Creative input form with four fields (Storyline, Subject, Environment, Mood)
- * and a prompt-count selector (3–6). All fields are optional — the form accepts
- * any combination of filled and empty inputs.
- *
- * Props:
- *   - values / onChange: controlled state for the four {@link UserInputs} fields
- *   - promptCount / onPromptCountChange: controlled state for the shot count selector
- */
 'use client'
 
 import { UserInputs } from '@/lib/system-prompt'
+import { GenerationMode, GENERATION_MODES } from '@/lib/model-profiles'
 
 interface InputFormProps {
   values: UserInputs
   promptCount: number
+  activeMode: GenerationMode
   onChange: (values: UserInputs) => void
   onPromptCountChange: (count: number) => void
+  onModeChange: (mode: GenerationMode) => void
 }
 
 const PROMPT_COUNTS = [3, 4, 5, 6]
 
+const PLACEHOLDERS: Record<GenerationMode, string> = {
+  generate:
+    'Describe your scene — subject, environment, mood, lighting, camera angle. The more specific you are, the better the prompts.\n\nExample: A woman in her 30s stands on a rain-slicked Tokyo rooftop at night. Neon signs reflect off wet concrete. Tense, melancholic. Cold blue light with warm neon spill.',
+  edit:
+    'Describe what you want the final image to look like, or what should change.\n\nExample: Replace the background with a sunset beach. Keep the subject and their pose exactly as they are. Warm golden light washing over the scene.',
+  video:
+    'Describe the motion, camera movement, and what happens over time.\n\nExample: Camera slowly dollies in on a woman sitting at a cafe table. She looks up from her coffee, turns toward the window. Outside, rain begins to fall. Ambient cafe sounds, soft piano.',
+}
+
 export default function InputForm({
   values,
   promptCount,
+  activeMode,
   onChange,
   onPromptCountChange,
+  onModeChange,
 }: InputFormProps) {
-  function update(field: keyof UserInputs, value: string) {
-    onChange({ ...values, [field]: value })
-  }
-
   return (
     <div className="space-y-5">
+      {/* Mode toggle */}
       <div>
         <label className="block text-xs uppercase tracking-widest text-neutral-400 mb-2">
-          Storyline / Concept
+          Mode
+        </label>
+        <div className="flex gap-1.5">
+          {GENERATION_MODES.map((mode) => (
+            <button
+              key={mode.id}
+              onClick={() => onModeChange(mode.id)}
+              className={`text-xs px-3 py-1.5 rounded-sm transition-all ${
+                activeMode === mode.id
+                  ? 'bg-neutral-900 text-white'
+                  : 'bg-white text-neutral-500 border border-neutral-200 hover:border-neutral-400'
+              }`}
+            >
+              {mode.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Single description textarea */}
+      <div>
+        <label className="block text-xs uppercase tracking-widest text-neutral-400 mb-2">
+          Description
         </label>
         <textarea
-          value={values.storyline}
-          onChange={(e) => update('storyline', e.target.value)}
-          placeholder="A lone detective searches an abandoned warehouse at night. Tension builds as shadows move..."
-          rows={3}
+          value={values.description}
+          onChange={(e) => onChange({ description: e.target.value })}
+          placeholder={PLACEHOLDERS[activeMode]}
+          rows={5}
           className="w-full border border-neutral-200 rounded-sm px-3 py-2 text-sm bg-white focus:outline-none focus:border-neutral-400 resize-none placeholder:text-neutral-300"
         />
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <label className="block text-xs uppercase tracking-widest text-neutral-400 mb-2">
-            Subject
-          </label>
-          <input
-            type="text"
-            value={values.subject}
-            onChange={(e) => update('subject', e.target.value)}
-            placeholder="woman in her 30s, black coat"
-            className="w-full border border-neutral-200 rounded-sm px-3 py-2 text-sm bg-white focus:outline-none focus:border-neutral-400 placeholder:text-neutral-300"
-          />
-        </div>
-        <div>
-          <label className="block text-xs uppercase tracking-widest text-neutral-400 mb-2">
-            Environment
-          </label>
-          <input
-            type="text"
-            value={values.environment}
-            onChange={(e) => update('environment', e.target.value)}
-            placeholder="urban rooftop, rain-slicked streets"
-            className="w-full border border-neutral-200 rounded-sm px-3 py-2 text-sm bg-white focus:outline-none focus:border-neutral-400 placeholder:text-neutral-300"
-          />
-        </div>
-      </div>
-
-      <div>
-        <label className="block text-xs uppercase tracking-widest text-neutral-400 mb-2">
-          Mood / Feeling
-        </label>
-        <input
-          type="text"
-          value={values.mood}
-          onChange={(e) => update('mood', e.target.value)}
-          placeholder="tense, melancholic, cold blue light"
-          className="w-full border border-neutral-200 rounded-sm px-3 py-2 text-sm bg-white focus:outline-none focus:border-neutral-400 placeholder:text-neutral-300"
-        />
-      </div>
-
+      {/* Prompt count */}
       <div>
         <label className="block text-xs uppercase tracking-widest text-neutral-400 mb-2">
           Number of Prompts

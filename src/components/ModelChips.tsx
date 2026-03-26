@@ -1,27 +1,27 @@
 'use client'
 
-import { TargetModel, MODEL_PROFILES } from '@/lib/model-profiles'
+import { TargetModel, GenerationMode, getModelsForMode } from '@/lib/model-profiles'
 
 interface ModelChipsProps {
   activeModel: TargetModel
-  availableModels: TargetModel[]
+  activeMode: GenerationMode
   loadingModel: TargetModel | null
   onModelClick: (model: TargetModel) => void
 }
 
-export default function ModelChips({ activeModel, availableModels, loadingModel, onModelClick }: ModelChipsProps) {
+export default function ModelChips({ activeModel, activeMode, loadingModel, onModelClick }: ModelChipsProps) {
+  const models = getModelsForMode(activeMode)
+
   return (
     <div className="flex items-center gap-1">
-      {availableModels.map((modelId) => {
-        const profile = MODEL_PROFILES[modelId]
-        const isActive = activeModel === modelId
-        const isLoading = loadingModel === modelId
+      {models.map((m) => {
+        const isActive = activeModel === m.id
+        const isLoading = loadingModel === m.id
 
         return (
           <button
-            key={modelId}
-            onClick={() => onModelClick(modelId)}
-            title={profile.label}
+            key={m.id}
+            onClick={() => onModelClick(m.id)}
             disabled={isLoading}
             className={`px-1.5 py-0.5 rounded-sm font-mono transition-all ${
               isLoading
@@ -31,7 +31,7 @@ export default function ModelChips({ activeModel, availableModels, loadingModel,
                   : 'bg-white text-neutral-400 text-[10px] border border-neutral-200 hover:border-neutral-400 hover:text-neutral-600'
             }`}
           >
-            {profile.shortLabel}
+            {m.label}
           </button>
         )
       })}

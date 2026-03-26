@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { callOpenRouter, parseJsonResponse, ContentPart } from '@/lib/openrouter'
-import { GEMINI_VISION_PROMPT, UserInputs, VisualStyleCues } from '@/lib/system-prompt'
+import { GEMINI_VISION_PROMPT, UserInputs, VisualStyleCues, ImageLabel } from '@/lib/system-prompt'
 import { buildSystemPrompt, buildUserMessage } from '@/lib/prompt-engine'
-import { TargetModel } from '@/lib/model-profiles'
+import { TargetModel, GenerationMode } from '@/lib/model-profiles'
 
-export const maxDuration = 120 // Allow up to 2 minutes for the two-step pipeline
+export const maxDuration = 120
 
 export interface GenerateRequest {
   images: Array<
@@ -13,12 +13,15 @@ export interface GenerateRequest {
   userInputs: UserInputs
   promptCount: number
   targetModel?: TargetModel
+  mode?: GenerationMode
+  imageLabels?: ImageLabel[]
 }
 
 export interface GenerateResponse {
   prompts: Array<{ label: string; prompt: string }>
   visualStyleCues?: VisualStyleCues
   targetModel: TargetModel
+  mode: GenerationMode
 }
 
 export async function POST(request: NextRequest) {
@@ -33,11 +36,12 @@ export async function POST(request: NextRequest) {
 
   try {
     const body: GenerateRequest = await request.json()
-    const { images, userInputs, promptCount, targetModel: rawTargetModel } = body
+    const { images, userInputs, promptCount, targetModel: rawTargetModel, mode: rawMode, imageLabels } = body
     const targetModel: TargetModel = rawTargetModel ?? 'flux-2-pro'
+    const mode: GenerationMode = rawMode ?? 'generate'
 
     const hasImages = Array.isArray(images) && images.length > 0
-    const hasUserInputs = Object.values(userInputs).some((v) => v?.trim())
+    const hasUserInputs = userInputs.description?.trim()
 
     if (!hasImages && !hasUserInputs) {
       return NextResponse.json(
@@ -46,10 +50,17 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    if (mode === 'edit' && !hasImages) {
+      return NextResponse.json(
+        { error: 'Edit mode requires at least one reference image' },
+        { status: 400 }
+      )
+    }
+
     let visualStyleCues: VisualStyleCues | undefined
 
-    // Step 1: Abstract vision analysis (only if images are provided)
-    if (hasImages) {
+    // Step 1: Vision analysis (only for generate mode with images)
+    if (hasImages && mode === 'generate') {
       const imageContentParts: ContentPart[] = images.map((img) => {
         if (img.type === 'base64') {
           return {
@@ -75,20 +86,19 @@ export async function POST(request: NextRequest) {
       try {
         visualStyleCues = parseJsonResponse<VisualStyleCues>(visionResponse)
       } catch {
-        // Non-fatal: proceed without style cues if parsing fails
         console.error('Vision analysis parse failed, continuing without style cues')
       }
     }
 
-    // Step 2: Prompt generation with MiniMax M2.5
-    const userMessage = buildUserMessage(userInputs, promptCount, targetModel, visualStyleCues)
+    // Step 2: Prompt generation
+    const userMessage = buildUserMessage(userInputs, promptCount, targetModel, mode, visualStyleCues, imageLabels)
 
     const promptResponse = await callOpenRouter({
       model: 'minimax/minimax-m2.5',
       apiKey,
       responseFormat: 'json_object',
       messages: [
-        { role: 'system', content: buildSystemPrompt(targetModel) },
+        { role: 'system', content: buildSystemPrompt(targetModel, mode) },
         { role: 'user', content: userMessage },
       ],
     })
@@ -108,6 +118,7 @@ export async function POST(request: NextRequest) {
       prompts: parsed.prompts,
       visualStyleCues,
       targetModel,
+      mode,
     }
 
     return NextResponse.json(response)

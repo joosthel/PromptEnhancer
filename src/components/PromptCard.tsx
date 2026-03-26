@@ -1,18 +1,17 @@
 'use client'
 
 import { useState } from 'react'
-import { TargetModel } from '@/lib/model-profiles'
+import { TargetModel, GenerationMode } from '@/lib/model-profiles'
 import FixToolbar from './FixToolbar'
 import FixHistory from './FixHistory'
 import ModelChips from './ModelChips'
-
-const CARD_MODEL_CHIPS: TargetModel[] = ['flux-2-pro', 'z-image', 'nanobanana-2']
 
 interface PromptCardProps {
   label: string
   prompt: string
   index: number
   activeModel: TargetModel
+  activeMode: GenerationMode
   history: Array<{ prompt: string; fix: string; timestamp: number }>
   isSelected: boolean
   onToggleSelect: () => void
@@ -28,6 +27,7 @@ export default function PromptCard({
   prompt,
   index,
   activeModel,
+  activeMode,
   history,
   isSelected,
   onToggleSelect,
@@ -104,7 +104,7 @@ export default function PromptCard({
         <FixHistory history={history} onRestore={onRestore} />
         <ModelChips
           activeModel={activeModel}
-          availableModels={CARD_MODEL_CHIPS}
+          activeMode={activeMode}
           loadingModel={reformatLoadingModel}
           onModelClick={onModelReformat}
         />

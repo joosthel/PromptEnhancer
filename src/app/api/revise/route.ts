@@ -11,9 +11,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import { callOpenRouter, parseJsonResponse } from '@/lib/openrouter'
 import { UserInputs, VisualStyleCues } from '@/lib/system-prompt'
 import { buildRevisionSystemPrompt, buildRevisionUserMessage } from '@/lib/prompt-engine'
-import { TargetModel } from '@/lib/model-profiles'
+import { TargetModel, GenerationMode } from '@/lib/model-profiles'
 
-export const maxDuration = 60 // Single model call — no vision step needed
+export const maxDuration = 60
 
 /** Request body for the revise endpoint. */
 export interface ReviseRequest {
@@ -25,6 +25,7 @@ export interface ReviseRequest {
   userInputs: UserInputs
   visualStyleCues?: VisualStyleCues
   targetModel?: TargetModel
+  mode?: GenerationMode
 }
 
 /** Response body: the revised prompt text only. */
@@ -44,8 +45,9 @@ export async function POST(request: NextRequest) {
 
   try {
     const body: ReviseRequest = await request.json()
-    const { prompt, label, revisionNote, fixCategory, history, userInputs, visualStyleCues, targetModel: rawTargetModel } = body
+    const { prompt, label, revisionNote, fixCategory, history, userInputs, visualStyleCues, targetModel: rawTargetModel, mode: rawMode } = body
     const targetModel: TargetModel = rawTargetModel ?? 'flux-2-pro'
+    const mode: GenerationMode = rawMode ?? 'generate'
 
     if (!prompt?.trim()) {
       return NextResponse.json(
@@ -70,7 +72,7 @@ export async function POST(request: NextRequest) {
       apiKey,
       responseFormat: 'json_object',
       messages: [
-        { role: 'system', content: buildRevisionSystemPrompt(targetModel) },
+        { role: 'system', content: buildRevisionSystemPrompt(targetModel, mode) },
         { role: 'user', content: userMessage },
       ],
     })

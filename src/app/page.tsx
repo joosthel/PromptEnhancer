@@ -6,8 +6,8 @@ import InputForm from '@/components/InputForm'
 import PromptList from '@/components/PromptList'
 import ModelBar from '@/components/ModelBar'
 import { ImageInput } from '@/lib/image-utils'
-import { UserInputs, VisualStyleCues } from '@/lib/system-prompt'
-import { TargetModel, DEFAULT_MODEL } from '@/lib/model-profiles'
+import { UserInputs, VisualStyleCues, ImageLabel } from '@/lib/system-prompt'
+import { TargetModel, GenerationMode, DEFAULT_MODEL, DEFAULT_MODE, getDefaultModelForMode } from '@/lib/model-profiles'
 
 interface GenerateResult {
   prompts: Array<{ label: string; prompt: string }>
@@ -17,27 +17,36 @@ interface GenerateResult {
 type LoadingPhase = 'idle' | 'analyzing' | 'generating' | 'done'
 
 const DEFAULT_INPUTS: UserInputs = {
-  storyline: '',
-  subject: '',
-  environment: '',
-  mood: '',
+  description: '',
 }
 
 export default function Home() {
   const [images, setImages] = useState<ImageInput[]>([])
+  const [imageLabels, setImageLabels] = useState<ImageLabel[]>([])
   const [userInputs, setUserInputs] = useState<UserInputs>(DEFAULT_INPUTS)
   const [promptCount, setPromptCount] = useState(4)
   const [loadingPhase, setLoadingPhase] = useState<LoadingPhase>('idle')
   const [result, setResult] = useState<GenerateResult | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [activeMode, setActiveMode] = useState<GenerationMode>(DEFAULT_MODE)
   const [activeModel, setActiveModel] = useState<TargetModel>(DEFAULT_MODEL)
+
+  function handleModeChange(mode: GenerationMode) {
+    setActiveMode(mode)
+    setActiveModel(getDefaultModelForMode(mode))
+  }
 
   async function handleGenerate() {
     const hasImages = images.length > 0
-    const hasInputs = Object.values(userInputs).some((v) => v.trim())
+    const hasInputs = userInputs.description.trim().length > 0
 
     if (!hasImages && !hasInputs) {
       setError('Add reference images or describe your concept to get started.')
+      return
+    }
+
+    if (activeMode === 'edit' && !hasImages) {
+      setError('Edit mode requires at least one reference image.')
       return
     }
 
@@ -66,6 +75,8 @@ export default function Home() {
           userInputs,
           promptCount,
           targetModel: activeModel,
+          mode: activeMode,
+          imageLabels: imageLabels.length > 0 ? imageLabels : undefined,
         }),
       })
 
@@ -105,29 +116,40 @@ export default function Home() {
         ? 'Writing prompts\u2026'
         : ''
 
+  const generateLabel = activeMode === 'edit' ? 'Generate Edit Prompts'
+    : activeMode === 'video' ? 'Generate Video Prompts'
+    : 'Generate Prompts'
+
   return (
     <main className="min-h-screen bg-[#FAFAFA]">
-      {/* Model Bar - full width at top */}
+      {/* Top bar */}
       <div className="border-b border-neutral-100">
         <div className="max-w-7xl mx-auto px-6 py-3 flex items-center justify-between">
           <div>
             <h1 className="text-lg font-medium tracking-tight text-neutral-900">PromptEnhancer</h1>
           </div>
-          <ModelBar activeModel={activeModel} onChange={setActiveModel} />
+          <ModelBar activeModel={activeModel} activeMode={activeMode} onChange={setActiveModel} />
         </div>
       </div>
 
-      {/* Split panel - inputs left, results right */}
+      {/* Split panel */}
       <div className="max-w-7xl mx-auto px-6 py-8 lg:flex lg:gap-8">
         {/* Left panel - inputs */}
         <div className="lg:w-[340px] lg:flex-shrink-0 space-y-6">
-          <ImageUploader images={images} onChange={setImages} />
+          <ImageUploader
+            images={images}
+            imageLabels={imageLabels}
+            onChange={setImages}
+            onLabelsChange={setImageLabels}
+          />
           <div className="border-t border-neutral-100" />
           <InputForm
             values={userInputs}
             promptCount={promptCount}
+            activeMode={activeMode}
             onChange={setUserInputs}
             onPromptCountChange={setPromptCount}
+            onModeChange={handleModeChange}
           />
 
           {error && (
@@ -141,7 +163,7 @@ export default function Home() {
             disabled={isLoading}
             className="w-full py-3 bg-neutral-900 text-white text-sm rounded-sm hover:bg-neutral-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {isLoading ? loadingText : 'Generate Prompts'}
+            {isLoading ? loadingText : generateLabel}
           </button>
         </div>
 
@@ -153,6 +175,7 @@ export default function Home() {
               visualStyleCues={result.visualStyleCues}
               userInputs={userInputs}
               activeModel={activeModel}
+              activeMode={activeMode}
               onPromptUpdate={handlePromptUpdate}
             />
           )}

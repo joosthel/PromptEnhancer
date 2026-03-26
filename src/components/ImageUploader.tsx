@@ -1,32 +1,26 @@
-/**
- * @file ImageUploader.tsx
- * Reference image input panel. Accepts images via drag-and-drop, file picker,
- * global clipboard paste (Cmd/Ctrl+V), and direct URL entry.
- *
- * Uploaded files are resized and compressed client-side via {@link fileToImageInput}
- * before being stored as {@link ImageInput} values. A maximum of 10 images is enforced.
- *
- * Props:
- *   - images: current list of reference images
- *   - onChange: callback to update the image list in the parent
- */
 'use client'
 
 import { useState, useRef, useEffect, useCallback, DragEvent } from 'react'
 import { ImageInput, fileToImageInput, extractImageFromClipboard, isValidImageUrl } from '@/lib/image-utils'
+import { ImageLabel } from '@/lib/system-prompt'
 
 const MAX_IMAGES = 10
 const MAX_FILE_SIZE_MB = 10
 
+const LABEL_PRESETS = ['style reference', 'subject', 'face', 'background', 'composition']
+
 interface ImageUploaderProps {
   images: ImageInput[]
+  imageLabels: ImageLabel[]
   onChange: (images: ImageInput[]) => void
+  onLabelsChange: (labels: ImageLabel[]) => void
 }
 
-export default function ImageUploader({ images, onChange }: ImageUploaderProps) {
+export default function ImageUploader({ images, imageLabels, onChange, onLabelsChange }: ImageUploaderProps) {
   const [dragging, setDragging] = useState(false)
   const [urlInput, setUrlInput] = useState('')
   const [urlError, setUrlError] = useState('')
+  const [editingLabel, setEditingLabel] = useState<number | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const addImages = useCallback(
@@ -54,7 +48,6 @@ export default function ImageUploader({ images, onChange }: ImageUploaderProps) 
     [images, onChange]
   )
 
-  // Global paste handler
   useEffect(() => {
     async function handlePaste(e: ClipboardEvent) {
       const file = extractImageFromClipboard(e)
@@ -110,6 +103,24 @@ export default function ImageUploader({ images, onChange }: ImageUploaderProps) 
 
   function removeImage(index: number) {
     onChange(images.filter((_, i) => i !== index))
+    onLabelsChange(imageLabels
+      .filter(l => l.index !== index)
+      .map(l => l.index > index ? { ...l, index: l.index - 1 } : l)
+    )
+  }
+
+  function setLabel(index: number, label: string) {
+    const existing = imageLabels.filter(l => l.index !== index)
+    if (label.trim()) {
+      onLabelsChange([...existing, { index, label: label.trim() }])
+    } else {
+      onLabelsChange(existing)
+    }
+    setEditingLabel(null)
+  }
+
+  function getLabelForIndex(index: number): string {
+    return imageLabels.find(l => l.index === index)?.label ?? ''
   }
 
   const atLimit = images.length >= MAX_IMAGES
@@ -129,7 +140,7 @@ export default function ImageUploader({ images, onChange }: ImageUploaderProps) 
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
           onClick={() => fileInputRef.current?.click()}
-          className={`border-2 border-dashed rounded-sm px-4 py-8 text-center cursor-pointer transition-colors ${
+          className={`border-2 border-dashed rounded-sm px-4 py-6 text-center cursor-pointer transition-colors ${
             dragging
               ? 'border-neutral-400 bg-neutral-50'
               : 'border-neutral-200 hover:border-neutral-300 hover:bg-neutral-50'
@@ -144,7 +155,7 @@ export default function ImageUploader({ images, onChange }: ImageUploaderProps) 
             onChange={handleFileInput}
           />
           <p className="text-sm text-neutral-400">
-            Drop images here, click to browse, or paste from clipboard
+            Drop images, click to browse, or paste
           </p>
           <p className="text-xs text-neutral-300 mt-1">
             PNG, JPG, WebP — max {MAX_FILE_SIZE_MB}MB each
@@ -154,25 +165,73 @@ export default function ImageUploader({ images, onChange }: ImageUploaderProps) 
 
       {images.length > 0 && (
         <div className="flex flex-wrap gap-2">
-          {images.map((img, i) => (
-            <div key={i} className="relative group">
-              <div className="w-16 h-16 border border-neutral-200 rounded-sm overflow-hidden bg-neutral-100">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={img.preview}
-                  alt={`Reference ${i + 1}`}
-                  className="w-full h-full object-cover"
-                />
+          {images.map((img, i) => {
+            const label = getLabelForIndex(i)
+            const isEditing = editingLabel === i
+
+            return (
+              <div key={i} className="relative group">
+                <div
+                  className="w-16 h-16 border border-neutral-200 rounded-sm overflow-hidden bg-neutral-100 cursor-pointer"
+                  onClick={() => setEditingLabel(isEditing ? null : i)}
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={img.preview}
+                    alt={`Reference ${i + 1}`}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+                {/* Label badge */}
+                {label && !isEditing && (
+                  <div
+                    className="absolute -bottom-1 left-0 right-0 text-center cursor-pointer"
+                    onClick={() => setEditingLabel(i)}
+                  >
+                    <span className="text-[9px] px-1 py-0.5 bg-neutral-800 text-white rounded-sm truncate inline-block max-w-[64px]">
+                      {label}
+                    </span>
+                  </div>
+                )}
+                {/* Label editor */}
+                {isEditing && (
+                  <div className="absolute top-full left-0 mt-1 z-10 bg-white border border-neutral-200 rounded-sm shadow-sm p-1.5 w-36">
+                    <input
+                      type="text"
+                      defaultValue={label}
+                      placeholder="Label this image..."
+                      autoFocus
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') setLabel(i, (e.target as HTMLInputElement).value)
+                        if (e.key === 'Escape') setEditingLabel(null)
+                      }}
+                      onBlur={(e) => setLabel(i, e.target.value)}
+                      className="w-full text-xs border border-neutral-200 rounded-sm px-1.5 py-1 focus:outline-none focus:border-neutral-400 mb-1"
+                    />
+                    <div className="flex flex-wrap gap-0.5">
+                      {LABEL_PRESETS.map((preset) => (
+                        <button
+                          key={preset}
+                          onClick={() => setLabel(i, preset)}
+                          className="text-[9px] px-1 py-0.5 bg-neutral-100 text-neutral-500 rounded-sm hover:bg-neutral-200 transition-colors"
+                        >
+                          {preset}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {/* Remove button */}
+                <button
+                  onClick={() => removeImage(i)}
+                  className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-neutral-800 text-white text-[10px] leading-none flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                  title="Remove"
+                >
+                  ×
+                </button>
               </div>
-              <button
-                onClick={() => removeImage(i)}
-                className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-neutral-800 text-white text-[10px] leading-none flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                title="Remove"
-              >
-                ×
-              </button>
-            </div>
-          ))}
+            )
+          })}
         </div>
       )}
 

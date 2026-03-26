@@ -2,7 +2,7 @@
 
 import { useState, useCallback } from 'react'
 import { VisualStyleCues, UserInputs } from '@/lib/system-prompt'
-import { TargetModel, FIX_CATEGORIES } from '@/lib/model-profiles'
+import { TargetModel, GenerationMode, FIX_CATEGORIES } from '@/lib/model-profiles'
 import PromptCard from './PromptCard'
 import BatchActions from './BatchActions'
 
@@ -11,6 +11,7 @@ interface PromptListProps {
   visualStyleCues?: VisualStyleCues
   userInputs: UserInputs
   activeModel: TargetModel
+  activeMode: GenerationMode
   onPromptUpdate: (index: number, newPrompt: string) => void
 }
 
@@ -19,6 +20,7 @@ export default function PromptList({
   visualStyleCues,
   userInputs,
   activeModel,
+  activeMode,
   onPromptUpdate,
 }: PromptListProps) {
   const [showCues, setShowCues] = useState(false)
@@ -35,7 +37,6 @@ export default function PromptList({
       const currentPrompt = prompts[index].prompt
       const history = promptHistory.get(index) ?? []
 
-      // Determine the revision note and fix category for the API
       let revisionNote = ''
       let apiFixCategory: string | undefined
 
@@ -59,13 +60,13 @@ export default function PromptList({
           userInputs,
           visualStyleCues,
           targetModel: activeModel,
+          mode: activeMode,
         }),
       })
 
       const data = await res.json()
       if (!res.ok) throw new Error(data.error ?? `Request failed with status ${res.status}`)
 
-      // Update history
       const fixLabel = fixCategory === 'custom' ? (customNote ?? 'Custom fix') : revisionNote
       const newHistoryEntry = {
         prompt: currentPrompt,
@@ -88,12 +89,11 @@ export default function PromptList({
         return next
       })
     }
-  }, [prompts, promptHistory, userInputs, visualStyleCues, activeModel, onPromptUpdate])
+  }, [prompts, promptHistory, userInputs, visualStyleCues, activeModel, activeMode, onPromptUpdate])
 
   const handleBatchFix = useCallback(async (fixCategory: string) => {
     setIsBatchFixing(true)
 
-    // Parse custom batch fix
     let category = fixCategory
     let customNote: string | undefined
     if (fixCategory.startsWith('custom:')) {
@@ -150,7 +150,6 @@ export default function PromptList({
     const restoredPrompt = history[historyIndex].prompt
     onPromptUpdate(index, restoredPrompt)
 
-    // Trim history to the restored point
     setPromptHistory((prev) => {
       const next = new Map(prev)
       next.set(index, history.slice(0, historyIndex))
@@ -180,7 +179,6 @@ export default function PromptList({
 
   return (
     <div className="space-y-6">
-      {/* Batch Actions */}
       <BatchActions
         totalCount={prompts.length}
         selectedCount={selectedSet.size}
@@ -190,7 +188,6 @@ export default function PromptList({
         isBatchFixing={isBatchFixing}
       />
 
-      {/* Visual Style Cues */}
       {visualStyleCues && (
         <div className="border border-neutral-200 rounded-sm">
           <button
@@ -239,7 +236,6 @@ export default function PromptList({
         </div>
       )}
 
-      {/* Prompt Cards */}
       <div className="space-y-3">
         {prompts.map((p, i) => (
           <PromptCard
@@ -248,6 +244,7 @@ export default function PromptList({
             prompt={p.prompt}
             index={i}
             activeModel={activeModel}
+            activeMode={activeMode}
             history={promptHistory.get(i) ?? []}
             isSelected={selectedSet.has(i)}
             onToggleSelect={() => toggleSelect(i)}
