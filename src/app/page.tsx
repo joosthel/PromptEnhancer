@@ -6,15 +6,16 @@ import InputForm from '@/components/InputForm'
 import PromptList from '@/components/PromptList'
 import ModelBar from '@/components/ModelBar'
 import { ImageInput } from '@/lib/image-utils'
-import { UserInputs, VisualStyleCues, ImageLabel } from '@/lib/system-prompt'
+import { UserInputs, VisualStyleCues, ImageLabel, CreativeBrief } from '@/lib/system-prompt'
 import { TargetModel, GenerationMode, DEFAULT_MODEL, DEFAULT_MODE, getDefaultModelForMode } from '@/lib/model-profiles'
 
 interface GenerateResult {
   prompts: Array<{ label: string; prompt: string }>
   visualStyleCues?: VisualStyleCues
+  creativeBrief?: CreativeBrief
 }
 
-type LoadingPhase = 'idle' | 'analyzing' | 'generating' | 'done'
+type LoadingPhase = 'idle' | 'analyzing' | 'briefing' | 'generating' | 'done'
 
 const DEFAULT_INPUTS: UserInputs = {
   description: '',
@@ -52,11 +53,15 @@ export default function Home() {
 
     setError(null)
     setResult(null)
-    setLoadingPhase(hasImages ? 'analyzing' : 'generating')
+    setLoadingPhase(hasImages ? 'analyzing' : 'briefing')
 
-    let phaseTimer: ReturnType<typeof setTimeout> | null = null
+    let briefTimer: ReturnType<typeof setTimeout> | null = null
+    let promptTimer: ReturnType<typeof setTimeout> | null = null
     if (hasImages) {
-      phaseTimer = setTimeout(() => setLoadingPhase('generating'), 7000)
+      briefTimer = setTimeout(() => setLoadingPhase('briefing'), 7000)
+      promptTimer = setTimeout(() => setLoadingPhase('generating'), 14000)
+    } else {
+      promptTimer = setTimeout(() => setLoadingPhase('generating'), 6000)
     }
 
     try {
@@ -92,7 +97,8 @@ export default function Home() {
       setError(err instanceof Error ? err.message : 'An unexpected error occurred')
       setLoadingPhase('idle')
     } finally {
-      if (phaseTimer) clearTimeout(phaseTimer)
+      if (briefTimer) clearTimeout(briefTimer)
+      if (promptTimer) clearTimeout(promptTimer)
     }
   }
 
@@ -107,14 +113,16 @@ export default function Home() {
     )
   }
 
-  const isLoading = loadingPhase === 'analyzing' || loadingPhase === 'generating'
+  const isLoading = loadingPhase === 'analyzing' || loadingPhase === 'briefing' || loadingPhase === 'generating'
 
   const loadingText =
     loadingPhase === 'analyzing'
-      ? 'Analyzing visual style\u2026'
-      : loadingPhase === 'generating'
-        ? 'Writing prompts\u2026'
-        : ''
+      ? 'Analyzing references\u2026'
+      : loadingPhase === 'briefing'
+        ? 'Locking creative brief\u2026'
+        : loadingPhase === 'generating'
+          ? 'Deriving prompts\u2026'
+          : ''
 
   const generateLabel = activeMode === 'edit' ? 'Generate Edit Prompts'
     : activeMode === 'video' ? 'Generate Video Prompts'
@@ -173,6 +181,7 @@ export default function Home() {
             <PromptList
               prompts={result.prompts}
               visualStyleCues={result.visualStyleCues}
+              creativeBrief={result.creativeBrief}
               userInputs={userInputs}
               activeModel={activeModel}
               activeMode={activeMode}

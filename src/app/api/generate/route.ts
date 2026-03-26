@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { callOpenRouter, parseJsonResponse, ContentPart } from '@/lib/openrouter'
-import { GEMINI_VISION_PROMPT, UserInputs, VisualStyleCues, ImageLabel } from '@/lib/system-prompt'
-import { buildSystemPrompt, buildUserMessage } from '@/lib/prompt-engine'
+import { GEMINI_VISION_PROMPT, UserInputs, VisualStyleCues, ImageLabel, CreativeBrief } from '@/lib/system-prompt'
+import { buildSystemPrompt, buildUserMessage, BRIEF_SYSTEM_PROMPT, buildBriefUserMessage } from '@/lib/prompt-engine'
 import { TargetModel, GenerationMode } from '@/lib/model-profiles'
 
 export const maxDuration = 120
@@ -20,6 +20,7 @@ export interface GenerateRequest {
 export interface GenerateResponse {
   prompts: Array<{ label: string; prompt: string }>
   visualStyleCues?: VisualStyleCues
+  creativeBrief?: CreativeBrief
   targetModel: TargetModel
   mode: GenerationMode
 }
@@ -58,9 +59,12 @@ export async function POST(request: NextRequest) {
     }
 
     let visualStyleCues: VisualStyleCues | undefined
+    let creativeBrief: CreativeBrief | undefined
 
-    // Step 1: Vision analysis (only for generate mode with images)
-    if (hasImages && mode === 'generate') {
+    // -----------------------------------------------------------------------
+    // Step 1: Vision analysis — find connecting concepts across reference images
+    // -----------------------------------------------------------------------
+    if (hasImages) {
       const imageContentParts: ContentPart[] = images.map((img) => {
         if (img.type === 'base64') {
           return {
@@ -90,8 +94,38 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Step 2: Prompt generation
-    const userMessage = buildUserMessage(userInputs, promptCount, targetModel, mode, visualStyleCues, imageLabels)
+    // -----------------------------------------------------------------------
+    // Step 2: Creative brief — locked production document
+    // Runs for generate and video modes (where consistency matters most)
+    // Also runs for edit mode if user provided a description
+    // -----------------------------------------------------------------------
+    if (mode === 'generate' || mode === 'video' || (mode === 'edit' && hasUserInputs)) {
+      const briefUserMessage = buildBriefUserMessage(userInputs, mode, visualStyleCues, imageLabels)
+
+      const briefResponse = await callOpenRouter({
+        model: 'minimax/minimax-m2.5',
+        apiKey,
+        responseFormat: 'json_object',
+        messages: [
+          { role: 'system', content: BRIEF_SYSTEM_PROMPT },
+          { role: 'user', content: briefUserMessage },
+        ],
+      })
+
+      try {
+        creativeBrief = parseJsonResponse<CreativeBrief>(briefResponse)
+      } catch {
+        console.error('Brief generation parse failed, continuing without brief')
+      }
+    }
+
+    // -----------------------------------------------------------------------
+    // Step 3: Prompt generation — strict derivation from the brief
+    // -----------------------------------------------------------------------
+    const userMessage = buildUserMessage(
+      userInputs, promptCount, targetModel, mode,
+      visualStyleCues, imageLabels, creativeBrief
+    )
 
     const promptResponse = await callOpenRouter({
       model: 'minimax/minimax-m2.5',
@@ -117,6 +151,7 @@ export async function POST(request: NextRequest) {
     const response: GenerateResponse = {
       prompts: parsed.prompts,
       visualStyleCues,
+      creativeBrief,
       targetModel,
       mode,
     }

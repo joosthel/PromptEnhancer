@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useCallback } from 'react'
-import { VisualStyleCues, UserInputs } from '@/lib/system-prompt'
+import { VisualStyleCues, UserInputs, CreativeBrief } from '@/lib/system-prompt'
 import { TargetModel, GenerationMode, FIX_CATEGORIES } from '@/lib/model-profiles'
 import PromptCard from './PromptCard'
 import BatchActions from './BatchActions'
@@ -9,6 +9,7 @@ import BatchActions from './BatchActions'
 interface PromptListProps {
   prompts: Array<{ label: string; prompt: string }>
   visualStyleCues?: VisualStyleCues
+  creativeBrief?: CreativeBrief
   userInputs: UserInputs
   activeModel: TargetModel
   activeMode: GenerationMode
@@ -18,12 +19,14 @@ interface PromptListProps {
 export default function PromptList({
   prompts,
   visualStyleCues,
+  creativeBrief,
   userInputs,
   activeModel,
   activeMode,
   onPromptUpdate,
 }: PromptListProps) {
   const [showCues, setShowCues] = useState(false)
+  const [showBrief, setShowBrief] = useState(false)
   const [fixingSet, setFixingSet] = useState<Set<number>>(new Set())
   const [reformatLoading, setReformatLoading] = useState<Map<number, TargetModel>>(new Map())
   const [selectedSet, setSelectedSet] = useState<Set<number>>(new Set())
@@ -188,6 +191,59 @@ export default function PromptList({
         isBatchFixing={isBatchFixing}
       />
 
+      {creativeBrief && (
+        <div className="border border-neutral-200 rounded-sm">
+          <button
+            onClick={() => setShowBrief(!showBrief)}
+            className="w-full flex items-center justify-between px-4 py-3 text-left"
+          >
+            <span className="text-xs uppercase tracking-widest text-neutral-400">
+              Production Brief
+            </span>
+            <span className="text-neutral-400 text-sm">{showBrief ? '\u2212' : '+'}</span>
+          </button>
+
+          {showBrief && (
+            <div className="px-4 pb-4 space-y-3 border-t border-neutral-100">
+              {creativeBrief.colorAnchors?.length > 0 && (
+                <div className="flex items-center gap-3 pt-3">
+                  <div className="flex gap-1.5">
+                    {creativeBrief.colorAnchors.map((hex, i) => (
+                      <div
+                        key={i}
+                        title={hex}
+                        className="w-6 h-6 rounded-sm border border-neutral-200 flex-shrink-0"
+                        style={{ backgroundColor: hex }}
+                      />
+                    ))}
+                  </div>
+                  <span className="text-xs text-neutral-400 font-mono">
+                    {creativeBrief.colorAnchors.join(' \u00b7 ')}
+                  </span>
+                </div>
+              )}
+              <div className="pt-2 space-y-2">
+                <div><span className="text-[10px] uppercase tracking-widest text-neutral-400">Color Grade</span><p className="text-xs text-neutral-600 mt-0.5">{creativeBrief.colorGrade}</p></div>
+                <div><span className="text-[10px] uppercase tracking-widest text-neutral-400">Lighting</span><p className="text-xs text-neutral-600 mt-0.5">{creativeBrief.lighting}</p></div>
+                <div><span className="text-[10px] uppercase tracking-widest text-neutral-400">Lens</span><p className="text-xs text-neutral-600 mt-0.5">{creativeBrief.lens}</p></div>
+                <div><span className="text-[10px] uppercase tracking-widest text-neutral-400">Mood</span><p className="text-xs text-neutral-600 mt-0.5">{creativeBrief.mood}</p></div>
+                <div><span className="text-[10px] uppercase tracking-widest text-neutral-400">Materials</span><p className="text-xs text-neutral-600 mt-0.5">{creativeBrief.materials}</p></div>
+                {creativeBrief.visualMotifs?.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5">
+                    {creativeBrief.visualMotifs.map((m, i) => (
+                      <span key={i} className="text-xs px-2 py-0.5 bg-neutral-100 text-neutral-500 rounded-sm font-mono">{m}</span>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <div className="pt-1 border-t border-neutral-100">
+                <p className="text-xs text-neutral-600 leading-relaxed whitespace-pre-line">{creativeBrief.fullBrief}</p>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
       {visualStyleCues && (
         <div className="border border-neutral-200 rounded-sm">
           <button
@@ -195,7 +251,7 @@ export default function PromptList({
             className="w-full flex items-center justify-between px-4 py-3 text-left"
           >
             <span className="text-xs uppercase tracking-widest text-neutral-400">
-              Visual Inspiration
+              Visual Analysis
             </span>
             <span className="text-neutral-400 text-sm">{showCues ? '\u2212' : '+'}</span>
           </button>

@@ -10,10 +10,11 @@ import {
   MODEL_PROFILES,
   FIX_CATEGORIES,
 } from './model-profiles'
-import type { UserInputs, VisualStyleCues, ImageLabel } from './system-prompt'
+import type { UserInputs, VisualStyleCues, ImageLabel, CreativeBrief } from './system-prompt'
 import { GEMINI_VISION_PROMPT } from './system-prompt'
 
 export { GEMINI_VISION_PROMPT }
+export type { CreativeBrief }
 
 // ---------------------------------------------------------------------------
 // Shared vocabulary blocks
@@ -38,68 +39,164 @@ Light: overcast diffuse, tungsten practical, sodium vapour, golden hour side-rak
 Grade: bleach bypass, cross-processed, lifted blacks, crushed shadows, split-toned highlights, analog halation`
 
 // ---------------------------------------------------------------------------
+// CREATIVE BRIEF — locked production document derived from vision + user input
+// ---------------------------------------------------------------------------
+
+export const BRIEF_SYSTEM_PROMPT = `You are a senior creative director locking a production brief for a commercial or editorial shoot. Your brief is the SINGLE SOURCE OF TRUTH that all downstream work must follow exactly. Nothing outside this brief exists.
+
+Your job: take the visual analysis and the user's creative direction and produce a LOCKED PRODUCTION BRIEF. This brief must be so specific and concrete that any competent cinematographer could reproduce the exact look without asking a single question.
+
+BRIEF STRUCTURE — fill every section with concrete, technical, unambiguous language:
+
+1. COLOR GRADE
+One sentence defining the exact color treatment. Name the grade technically (e.g., "desaturated cool palette with lifted blacks, blue-grey shadows at #4A5568, muted warm skin tones shifted toward peach #E8C4A0"). This sentence will be copied VERBATIM into every prompt.
+
+2. COLOR ANCHORS
+Exactly 3 hex colors that anchor every image: shadow tone, midtone, highlight/accent. These appear in every prompt.
+
+3. LIGHTING SETUP
+Exact light setup as if writing a lighting plot. Name source type, direction, quality, color temperature, shadow behavior. One setup that applies to the entire set. (e.g., "Single overhead HMI through 4x4 light grid cloth, 5600K, creating soft even top-light with minimal shadows. Fill from white bounce below camera. Practicals in frame: warm tungsten 2700K desk lamp providing accent on subject's face.")
+
+4. LENS & CAMERA
+Exact lens family, focal length range, aperture, depth of field, camera height, any specific lens character (anamorphic, vintage, clinical). One camera setup for the set.
+
+5. MATERIALS & TEXTURES
+The 3-5 dominant material/texture qualities that must appear across the set. Be specific about surface finish, wear, and reflectivity.
+
+6. MOOD & EMOTIONAL REGISTER
+One sentence defining the exact emotional tone. Not vague ("moody") — specific ("quiet tension of an unresolved conversation, intimacy held at arm's length").
+
+7. SUBJECT DIRECTION
+How subjects are posed, styled, and related to camera. Specific enough to direct a model on set.
+
+8. ENVIRONMENT DIRECTION
+The physical space. Materials, scale, condition, time of day, weather if exterior.
+
+9. VISUAL MOTIFS
+2-3 specific recurring visual elements that thread through every shot (a material, a shape, a light behavior, an object).
+
+10. NARRATIVE ARC
+How the set of images progresses from first to last shot — emotional escalation, spatial progression, or temporal shift.
+
+BRAND/DESIGNER TRANSLATION:
+If the user mentions brands or designers, translate them into their VISUAL CHARACTERISTICS:
+- "Jil Sander" → "minimalist tailoring, architectural lines, dove grey and ivory palette, structured wool, absence of ornament"
+- "Helmut Newton" → "high-contrast black and white, hard directional light, angular posed confidence, polished surfaces"
+- Always translate — never leave a brand name as the description.
+
+RULES:
+- Every field must be concrete enough to replicate without interpretation
+- No hedging ("perhaps", "could be", "maybe") — commit to specific choices
+- No options or alternatives — one answer per field
+- If the user's description is vague, make the best specific choice and commit to it
+- The brief is a CONTRACT — downstream prompts must follow it exactly
+
+Return ONLY valid JSON matching this structure:
+{
+  "colorGrade": "single sentence — the exact color grade",
+  "colorAnchors": ["#XXXXXX", "#XXXXXX", "#XXXXXX"],
+  "lighting": "exact lighting setup description",
+  "lens": "exact lens and camera description",
+  "materials": "dominant materials and textures",
+  "mood": "exact emotional register",
+  "subjectDirection": "how subjects are treated",
+  "environmentDirection": "the physical space",
+  "visualMotifs": ["motif 1", "motif 2", "motif 3"],
+  "narrativeArc": "how the set progresses",
+  "fullBrief": "the complete brief as a single flowing paragraph (~300 words) combining all of the above into a unified production document"
+}`
+
+export function buildBriefUserMessage(
+  userInputs: UserInputs,
+  mode: GenerationMode,
+  visualStyleCues?: VisualStyleCues,
+  imageLabels?: ImageLabel[]
+): string {
+  const lines: string[] = []
+
+  lines.push(`MODE: ${mode === 'generate' ? 'Image Generation' : mode === 'edit' ? 'Image Editing' : 'Video Generation'}`)
+
+  if (visualStyleCues) {
+    lines.push('\n=== VISUAL ANALYSIS (from reference images) ===')
+    lines.push(visualStyleCues.description)
+    lines.push(`\nExtracted Palette: ${visualStyleCues.hexPalette.join(', ')}`)
+    if (visualStyleCues.cinematicKeywords?.length > 0) {
+      lines.push(`Cinematic Keywords: ${visualStyleCues.cinematicKeywords.join(' | ')}`)
+    }
+  }
+
+  if (imageLabels && imageLabels.length > 0) {
+    lines.push('\n=== REFERENCE IMAGE LABELS ===')
+    for (const il of imageLabels) {
+      lines.push(`Image ${il.index + 1}: ${il.label}`)
+    }
+  }
+
+  lines.push('\n=== CREATIVE DIRECTION (from user) ===')
+  if (userInputs.description.trim()) {
+    lines.push(userInputs.description)
+  } else if (visualStyleCues) {
+    lines.push('(No text description — derive all creative direction from the visual analysis above.)')
+  } else {
+    lines.push('(No inputs provided — create a compelling cinematic brief based on your best creative judgment.)')
+  }
+
+  lines.push('\nLock the brief. Be specific. Commit to every choice.')
+
+  return lines.join('\n')
+}
+
+// ---------------------------------------------------------------------------
 // GENERATE mode — text-to-image system prompt
 // ---------------------------------------------------------------------------
 
 function buildGenerateSystemPrompt(targetModel: TargetModel): string {
   const profile = MODEL_PROFILES[targetModel]
 
-  return `You are an image prompt writer working in the mode of a senior Director of Photography briefing a camera operator. Your default register is photorealistic cinematic — grounded, specific, and technically informed. Think Denis Villeneuve's restraint, Roger Deakins' mastery of practical and available light, David Lynch's quiet sense of wrongness. Never a fantasy novel.
+  return `You are a prompt technician. You receive a LOCKED CREATIVE BRIEF and you translate it into image generation prompts. You do NOT add creative ideas. You do NOT interpret. You TRANSCRIBE the brief into prompt format.
 
 TARGET MODEL: ${profile.label}
 ${profile.promptRules}
 
+YOUR ROLE:
+- The creative brief is your ONLY source of truth
+- Every visual decision has already been made in the brief
+- Your job is FORMAT CONVERSION: brief → model-optimized prompts
+- If the brief says "desaturated cool tones with lifted blacks" then EVERY prompt contains those exact words
+- Zero creative latitude. Zero embellishment. Zero interpretation.
+
 PROMPT STRUCTURE:
-1. Each prompt: [cinematic_descriptor] [subject+action] [environment] [lighting_details] [camera_specs]
-2. Length: ${profile.optimalLengthMin}-${profile.optimalLengthMax} words per prompt.
-3. Each prompt must use a different camera angle from: Wide Establishing Shot / Medium Shot / Close-Up Portrait / Low-Angle Dramatic / High-Angle Overview / Dutch Angle
+1. Each prompt: [color_grade_from_brief] [subject+action_from_brief] [environment_from_brief] [lighting_from_brief] [lens_from_brief]
+2. Length: ${profile.optimalLengthMin}-${profile.optimalLengthMax} words per prompt
+3. Each prompt uses a different camera angle: Wide Establishing / Medium / Close-Up / Low-Angle / High-Angle / Dutch Angle
 
-VISUAL COHERENCE ACROSS THE SET:
-All prompts must read as frames from the same film. Enforce through:
-- COLOR LOCK: Before writing any prompt, decide ONE specific color grade that applies to the entire set. State it as a concrete technical description (e.g., "desaturated cool tones, lifted blacks, blue-grey shadows with muted warm skin tones"). Then REPEAT this exact color grade description verbatim or near-verbatim in every single prompt. Do not paraphrase it differently each time — use the same color language.
-- PALETTE ANCHORING: Pick 2-3 specific hex colors or named color references that appear in every prompt. Example: "slate blue (#5B7B8A) shadows, warm ivory (#F5E6D3) highlights, oxidized copper (#8B6914) accents". Reference these exact colors across all prompts.
-- RECURRING VISUAL MOTIFS: Thread 2-3 physical motifs across prompts (a material, a light behavior, a texture).
-- LIGHTING CONTINUITY: Same time of day, weather, dominant light source across all shots. Name the light source once and repeat it.
-- SYMBOLIC THREAD: Let the visual language escalate to match the emotional arc.
-
-BRAND AND DESIGNER REFERENCES:
-When the user mentions fashion brands, designers, photographers, or other cultural references:
-- TRANSLATE the reference into its concrete visual characteristics rather than naming the brand in the prompt
-- "Jil Sander" → "minimalist tailoring, clean architectural lines, neutral palette, unfussy luxury, structured wool and cashmere, absence of visible branding"
-- "Helmut Newton" → "high-contrast black and white, strong directional light, angular poses, polished surfaces, provocative confidence"
-- This approach works because image models respond to VISUAL DESCRIPTIONS, not brand names. A model may not know "Jil Sander" but it understands "architectural minimalism in dove grey wool"
-- If the user explicitly asks for brand names in prompts, include them — but always ALSO include the visual translation as the primary descriptor
+MANDATORY REPETITION ACROSS ALL PROMPTS:
+These elements from the brief must appear VERBATIM in every single prompt:
+- The color grade sentence — copy it word for word
+- The 3 color anchor hex values
+- The lighting setup description
+- The lens/camera specification
+The ONLY things that change between prompts are: camera angle, subject action/pose, and framing.
 
 ARTIFACT PREVENTION:
 - When hands are visible, specify "five fingers on each hand" and what the hands are doing
-- Never combine contradictory modifiers (e.g., "close-up wide-angle", "bright dark")
-- Avoid text/typography in the image — flag for post-production
-- Avoid the "AI look": over-saturated colors, plastic skin, impossibly clean environments
+- Never combine contradictory modifiers
+- Avoid text/typography in the image
 - Ground every element in physical reality — specify materials, weathering, wear
 - Limit each prompt to 3-5 primary visual concepts
-- Specify relative scale when multiple subjects are present
 
 ${NATURALISM_VOCABULARY}
 
-${LENS_VOCABULARY}
-
 ${FORBIDDEN_LANGUAGE}
 
-WHEN VISUAL REFERENCE IS PROVIDED:
-- Images define the visual language — replicate faithfully
-- Weave cinematicKeywords naturally across prompts
-- Reference hexPalette tones when describing color
-- Where user description is absent, derive subject/environment from image analysis
-
 COHERENCE VALIDATION (verify before returning):
-- Extract the color grade phrase from prompt 1. Does the EXACT same phrase appear in all other prompts? If not, fix it.
-- Shadow direction consistent across all shots
-- Same film stock / lens family referenced in every prompt
-- Same 2-3 hex color anchors referenced in every prompt
-- Visual motifs appear in at least 2 of N prompts
-- Emotional arc escalates from first to last shot
+- Extract the color grade from the brief. Is it VERBATIM in every prompt? If not, fix.
+- Are the 3 hex color anchors in every prompt? If not, fix.
+- Is the same lighting setup in every prompt? If not, fix.
+- Is the same lens in every prompt? If not, fix.
+- Do the visual motifs from the brief appear across prompts? If not, fix.
+- Does the narrative arc from the brief progress across the set? If not, fix.
 - No prompt falls outside ${profile.optimalLengthMin}-${profile.optimalLengthMax} words
-- If the user mentioned brands/designers: are they translated into visual descriptions, not left as brand names?
 
 OUTPUT: Return ONLY valid JSON:
 {
@@ -209,11 +306,10 @@ export function buildUserMessage(
   targetModel: TargetModel,
   mode: GenerationMode,
   visualStyleCues?: VisualStyleCues,
-  imageLabels?: ImageLabel[]
+  imageLabels?: ImageLabel[],
+  creativeBrief?: CreativeBrief
 ): string {
   const profile = MODEL_PROFILES[targetModel]
-  const hasDescription = userInputs.description.trim()
-  const hasVisual = !!visualStyleCues
 
   const modeLabel = mode === 'generate' ? 'image generation'
     : mode === 'edit' ? 'image editing'
@@ -224,17 +320,89 @@ export function buildUserMessage(
     `Target: ${profile.optimalLengthMin}-${profile.optimalLengthMax} words per prompt.`,
   ]
 
-  if (mode === 'generate') {
-    lines.push(`All ${promptCount} prompts must look like frames pulled from the same film — same color grade, same lighting world, same emotional register.`)
-    lines.push(`CRITICAL: Define a single color grade phrase and 2-3 anchor colors BEFORE writing. Then copy that exact color language into EVERY prompt. Do not vary the color description between prompts.`)
-  } else if (mode === 'edit') {
-    lines.push(`Each prompt is a different edit variant — same source image, different creative directions.`)
-  } else {
-    lines.push(`Each prompt is a separate shot in a sequence — maintain visual continuity across all shots.`)
+  // Brief-driven generation (primary path for generate mode)
+  if (creativeBrief && mode === 'generate') {
+    lines.push('\n=== LOCKED CREATIVE BRIEF — YOUR ONLY SOURCE OF TRUTH ===')
+    lines.push('Every visual decision is made. You are a transcriber, not a creative.')
+    lines.push('')
+    lines.push(`COLOR GRADE (copy VERBATIM into every prompt): ${creativeBrief.colorGrade}`)
+    lines.push(`COLOR ANCHORS (include in every prompt): ${creativeBrief.colorAnchors.join(', ')}`)
+    lines.push(`LIGHTING: ${creativeBrief.lighting}`)
+    lines.push(`LENS & CAMERA: ${creativeBrief.lens}`)
+    lines.push(`MATERIALS: ${creativeBrief.materials}`)
+    lines.push(`MOOD: ${creativeBrief.mood}`)
+    lines.push(`SUBJECT: ${creativeBrief.subjectDirection}`)
+    lines.push(`ENVIRONMENT: ${creativeBrief.environmentDirection}`)
+    lines.push(`VISUAL MOTIFS (thread across prompts): ${creativeBrief.visualMotifs.join(' | ')}`)
+    lines.push(`NARRATIVE ARC: ${creativeBrief.narrativeArc}`)
+    lines.push('')
+    lines.push('=== RULES ===')
+    lines.push('1. The color grade sentence above must appear WORD FOR WORD in every prompt.')
+    lines.push('2. The 3 hex color anchors must appear in every prompt.')
+    lines.push('3. The lighting description must appear in every prompt.')
+    lines.push('4. The lens specification must appear in every prompt.')
+    lines.push('5. The ONLY variation between prompts: camera angle, subject pose/action, and framing.')
+    lines.push('6. Follow the narrative arc from first to last shot.')
+
+    return lines.join('\n')
   }
 
-  // Visual reference
-  if (hasVisual) {
+  // Edit mode — brief-aware but not brief-locked
+  if (mode === 'edit') {
+    lines.push(`Each prompt is a different edit variant — same source image, different creative directions.`)
+
+    if (creativeBrief) {
+      lines.push('\n=== CREATIVE BRIEF (guide, not verbatim) ===')
+      lines.push(creativeBrief.fullBrief)
+    }
+
+    if (imageLabels && imageLabels.length > 0) {
+      lines.push('\n=== REFERENCE IMAGE LABELS ===')
+      for (const il of imageLabels) {
+        lines.push(`Image ${il.index + 1}: ${il.label}`)
+      }
+      lines.push('(Use these labels to understand what each reference image contributes to the edit.)')
+    }
+
+    if (userInputs.description.trim()) {
+      lines.push('\n=== CREATIVE DIRECTION ===')
+      lines.push(userInputs.description)
+    }
+
+    lines.push('\n=== EDIT REMINDER ===')
+    lines.push('Each prompt must describe the DESIRED RESULT. Do not write "change X to Y" — write what the final image looks like.')
+
+    return lines.join('\n')
+  }
+
+  // Video mode — brief-aware
+  if (mode === 'video') {
+    lines.push(`Each prompt is a separate shot in a sequence — maintain visual continuity across all shots.`)
+
+    if (creativeBrief) {
+      lines.push('\n=== CREATIVE BRIEF (maintain visual continuity from this) ===')
+      lines.push(creativeBrief.fullBrief)
+    }
+
+    if (visualStyleCues) {
+      lines.push('\n=== VISUAL REFERENCE ===')
+      lines.push(visualStyleCues.description)
+      lines.push(`Color Palette: ${visualStyleCues.hexPalette.join(', ')}`)
+    }
+
+    if (userInputs.description.trim()) {
+      lines.push('\n=== CREATIVE DIRECTION ===')
+      lines.push(userInputs.description)
+    }
+
+    lines.push('\n=== VIDEO REMINDER ===')
+    lines.push('Focus on motion, camera movement, and temporal evolution. The reference image (if any) establishes the visual ground truth — your prompt adds the temporal dimension.')
+
+    return lines.join('\n')
+  }
+
+  // Fallback: generate without brief (no reference images)
+  if (visualStyleCues) {
     lines.push('\n=== VISUAL REFERENCE ===')
     lines.push(visualStyleCues.description)
     lines.push(`\nColor Palette: ${visualStyleCues.hexPalette.join(', ')}`)
@@ -243,38 +411,16 @@ export function buildUserMessage(
     }
   }
 
-  // Image labels
-  if (imageLabels && imageLabels.length > 0) {
-    lines.push('\n=== REFERENCE IMAGE LABELS ===')
-    for (const il of imageLabels) {
-      lines.push(`Image ${il.index + 1}: ${il.label}`)
-    }
-    if (mode === 'edit') {
-      lines.push('(Use these labels to understand what each reference image contributes to the edit.)')
-    }
-  }
-
-  // User description
-  lines.push('\n=== CREATIVE DIRECTION ===')
-  if (hasDescription) {
+  if (userInputs.description.trim()) {
+    lines.push('\n=== CREATIVE DIRECTION ===')
     lines.push(userInputs.description)
-  } else if (hasVisual) {
-    lines.push('(No text description — derive all from visual reference.)')
   } else {
+    lines.push('\n=== CREATIVE DIRECTION ===')
     lines.push('(No inputs — generate a compelling cinematic sequence with clear visual identity.)')
   }
 
-  // Mode-specific reminders
-  if (mode === 'edit') {
-    lines.push('\n=== EDIT REMINDER ===')
-    lines.push('Each prompt must describe the DESIRED RESULT. Do not write "change X to Y" — write what the final image looks like.')
-  } else if (mode === 'video') {
-    lines.push('\n=== VIDEO REMINDER ===')
-    lines.push('Focus on motion, camera movement, and temporal evolution. The reference image (if any) establishes the visual ground truth — your prompt adds the temporal dimension.')
-  } else {
-    lines.push('\n=== COHERENCE CHECK ===')
-    lines.push('Before finalizing: Extract the color grade phrase from prompt 1. Is the EXACT same phrase in all other prompts? Are the same 2-3 hex anchor colors in every prompt? Same shadow direction? Same film stock? If any prompt drifts, rewrite it to match. The set must be intercuttable without a jarring color shift.')
-  }
+  lines.push('\n=== COHERENCE CHECK ===')
+  lines.push('Before finalizing: define ONE color grade phrase and copy it VERBATIM into every prompt. Same lighting, same lens, same anchors. The set must be intercuttable.')
 
   return lines.join('\n')
 }
