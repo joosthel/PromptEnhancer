@@ -56,10 +56,19 @@ PROMPT STRUCTURE:
 
 VISUAL COHERENCE ACROSS THE SET:
 All prompts must read as frames from the same film. Enforce through:
-- COLOR CONSISTENCY: Single dominant color temperature and tonal grade. Every prompt references the same base palette.
+- COLOR LOCK: Before writing any prompt, decide ONE specific color grade that applies to the entire set. State it as a concrete technical description (e.g., "desaturated cool tones, lifted blacks, blue-grey shadows with muted warm skin tones"). Then REPEAT this exact color grade description verbatim or near-verbatim in every single prompt. Do not paraphrase it differently each time — use the same color language.
+- PALETTE ANCHORING: Pick 2-3 specific hex colors or named color references that appear in every prompt. Example: "slate blue (#5B7B8A) shadows, warm ivory (#F5E6D3) highlights, oxidized copper (#8B6914) accents". Reference these exact colors across all prompts.
 - RECURRING VISUAL MOTIFS: Thread 2-3 physical motifs across prompts (a material, a light behavior, a texture).
-- LIGHTING CONTINUITY: Same time of day, weather, dominant light source across all shots.
+- LIGHTING CONTINUITY: Same time of day, weather, dominant light source across all shots. Name the light source once and repeat it.
 - SYMBOLIC THREAD: Let the visual language escalate to match the emotional arc.
+
+BRAND AND DESIGNER REFERENCES:
+When the user mentions fashion brands, designers, photographers, or other cultural references:
+- TRANSLATE the reference into its concrete visual characteristics rather than naming the brand in the prompt
+- "Jil Sander" → "minimalist tailoring, clean architectural lines, neutral palette, unfussy luxury, structured wool and cashmere, absence of visible branding"
+- "Helmut Newton" → "high-contrast black and white, strong directional light, angular poses, polished surfaces, provocative confidence"
+- This approach works because image models respond to VISUAL DESCRIPTIONS, not brand names. A model may not know "Jil Sander" but it understands "architectural minimalism in dove grey wool"
+- If the user explicitly asks for brand names in prompts, include them — but always ALSO include the visual translation as the primary descriptor
 
 ARTIFACT PREVENTION:
 - When hands are visible, specify "five fingers on each hand" and what the hands are doing
@@ -83,12 +92,14 @@ WHEN VISUAL REFERENCE IS PROVIDED:
 - Where user description is absent, derive subject/environment from image analysis
 
 COHERENCE VALIDATION (verify before returning):
-- All prompts share identical color temperature and grade
+- Extract the color grade phrase from prompt 1. Does the EXACT same phrase appear in all other prompts? If not, fix it.
 - Shadow direction consistent across all shots
-- Same film stock / lens family referenced
+- Same film stock / lens family referenced in every prompt
+- Same 2-3 hex color anchors referenced in every prompt
 - Visual motifs appear in at least 2 of N prompts
 - Emotional arc escalates from first to last shot
 - No prompt falls outside ${profile.optimalLengthMin}-${profile.optimalLengthMax} words
+- If the user mentioned brands/designers: are they translated into visual descriptions, not left as brand names?
 
 OUTPUT: Return ONLY valid JSON:
 {
@@ -215,6 +226,7 @@ export function buildUserMessage(
 
   if (mode === 'generate') {
     lines.push(`All ${promptCount} prompts must look like frames pulled from the same film — same color grade, same lighting world, same emotional register.`)
+    lines.push(`CRITICAL: Define a single color grade phrase and 2-3 anchor colors BEFORE writing. Then copy that exact color language into EVERY prompt. Do not vary the color description between prompts.`)
   } else if (mode === 'edit') {
     lines.push(`Each prompt is a different edit variant — same source image, different creative directions.`)
   } else {
@@ -261,7 +273,7 @@ export function buildUserMessage(
     lines.push('Focus on motion, camera movement, and temporal evolution. The reference image (if any) establishes the visual ground truth — your prompt adds the temporal dimension.')
   } else {
     lines.push('\n=== COHERENCE CHECK ===')
-    lines.push('Before finalizing: Do all prompts share the same color temperature, shadow behavior, and film stock? Could they be intercut without a jarring shift? If not, revise.')
+    lines.push('Before finalizing: Extract the color grade phrase from prompt 1. Is the EXACT same phrase in all other prompts? Are the same 2-3 hex anchor colors in every prompt? Same shadow direction? Same film stock? If any prompt drifts, rewrite it to match. The set must be intercuttable without a jarring color shift.')
   }
 
   return lines.join('\n')

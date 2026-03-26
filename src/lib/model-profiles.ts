@@ -82,7 +82,9 @@ export const MODEL_PROFILES: Record<TargetModel, ModelProfile> = {
 - Include "sharp focus", "crisp details" explicitly for quality
 - Specify camera and lens: "Shot on Leica M6 with Kodak Portra 400 film grain"
 - Avoid contradictory styles ("photorealistic cartoon")
-- Limit to 3-5 primary visual concepts per prompt`,
+- Limit to 3-5 primary visual concepts per prompt
+- COLOR ANCHORING IS CRITICAL FOR Z-IMAGE: The Style section of every prompt must contain the identical color grade description and the same 2-3 named/hex colors. Z-Image is sensitive to color language — if you say "warm tones" in one prompt and "golden hues" in another, the outputs will diverge. Use the exact same color phrase every time.
+- When the user references brands or designers, translate to visual properties. Z-Image does not reliably understand fashion brand names — describe the aesthetic instead.`,
   },
   'nanobanana-2': {
     id: 'nanobanana-2',
