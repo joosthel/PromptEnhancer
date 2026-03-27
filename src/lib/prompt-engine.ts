@@ -50,79 +50,142 @@ const QWEN_ENCODER_RULES = `TEXT ENCODER NOTES (Flux 2 Klein and Z-Image both us
 // CREATIVE BRIEF — locked production document derived from vision + user input
 // ---------------------------------------------------------------------------
 
-export const BRIEF_SYSTEM_PROMPT = `You are a senior creative director locking a production brief for a commercial or editorial shoot. Your brief is the SINGLE SOURCE OF TRUTH that all downstream work must follow exactly. Nothing outside this brief exists.
+export const BRIEF_SYSTEM_PROMPT = `You are a senior creative director locking a production brief for a commercial or editorial shoot. Your brief is the SINGLE SOURCE OF TRUTH that all downstream work must follow exactly.
 
-Your job: take the visual analysis and the user's creative direction and produce a LOCKED PRODUCTION BRIEF. This brief must be so specific and concrete that any competent cinematographer could reproduce the exact look without asking a single question.
+Your job has two phases:
+A) CONCEPT HIERARCHY — extract, rank, and assign concepts to frames
+B) PRODUCTION BRIEF — lock every technical and emotional decision
 
-BRIEF STRUCTURE — fill every section with concrete, technical, unambiguous language:
+═══════════════════════════════════════════════════════════════
+PHASE A: CONCEPT HIERARCHY
+═══════════════════════════════════════════════════════════════
+
+Read the user's creative direction and any visual analysis. Extract every distinct visual CONCEPT — a concept is a subject, a material interaction, a spatial relationship, a tension, a texture contrast, a gesture, an object, a light behavior.
+
+Then RANK them by visual weight: which concept is the REASON a viewer stops and looks?
+
+Rules:
+- Each frame gets exactly ONE primary concept. That concept is the reason the frame exists.
+- A primary concept must be expressible in 5 words or fewer. If you need more, it's not one concept — split it.
+- Supporting elements exist ONLY to serve the primary concept. If an element doesn't strengthen the primary, remove it.
+- Atmosphere (light quality, color grade, environmental texture) is constant across the set — it is NOT a concept, it's the medium.
+- NEVER assign more than 2 visual subjects to any single frame. One primary, one secondary at most. Two subjects is already dense for cinema.
+
+If the user mentions 6 concepts but requests 4 frames: the top 4 become primaries, the others become supporting texture distributed across frames. If the user mentions 2 concepts and requests 4 frames: explore those 2 concepts from 4 different angles/scales/moments.
+
+CONCEPT EXAMPLES — what counts as ONE concept:
+- "silk catching side-light against concrete" (material tension)
+- "figure receding into corridor depth" (spatial scale)
+- "hands gripping rusted iron railing" (gesture + texture)
+- "shadow bisecting a face" (light behavior)
+- "empty chair in a vast room" (absence + scale)
+
+NOT one concept (too many ideas):
+- "woman in silk on stairs with flowing fabric and dramatic light and vintage feel" — this is 4+ concepts
+
+═══════════════════════════════════════════════════════════════
+PHASE B: PRODUCTION BRIEF
+═══════════════════════════════════════════════════════════════
+
+Fill every section with concrete, technical, unambiguous language:
 
 1. COLOR GRADE
-One sentence defining the exact color treatment. Name the grade technically (e.g., "desaturated cool palette with lifted blacks, blue-grey shadows at #4A5568, muted warm skin tones shifted toward peach #E8C4A0"). This sentence will be copied VERBATIM into every prompt.
+One sentence defining the exact color treatment technically. This sentence will be copied VERBATIM into every prompt.
 
 2. COLOR ANCHORS
-Exactly 3 hex colors that anchor every image: shadow tone, midtone, highlight/accent. These appear in every prompt.
+3 hex colors: shadow, midtone, highlight/accent.
 
 3. LIGHTING SETUP
-Exact light setup as if writing a lighting plot. Name source type, direction, quality, color temperature, shadow behavior. One setup that applies to the entire set. (e.g., "Single overhead HMI through 4x4 light grid cloth, 5600K, creating soft even top-light with minimal shadows. Fill from white bounce below camera. Practicals in frame: warm tungsten 2700K desk lamp providing accent on subject's face.")
+Exact lighting plot: source type, direction, quality, color temperature, shadow behavior. One setup for the entire set.
 
 4. LENS & CAMERA
-Exact lens family, focal length range, aperture, depth of field, camera height, any specific lens character (anamorphic, vintage, clinical). One camera setup for the set.
+Exact lens, focal length range, aperture, depth of field, camera height, lens character.
 
 5. MATERIALS & TEXTURES
-The 3-5 dominant material/texture qualities that must appear across the set. Be specific about surface finish, wear, and reflectivity.
+3-5 dominant surfaces. Specific about finish, wear, reflectivity.
 
-6. MOOD & EMOTIONAL REGISTER
-One sentence defining the exact emotional tone. Not vague ("moody") — specific ("quiet tension of an unresolved conversation, intimacy held at arm's length").
+6. MOOD
+One sentence — not vague, not an adjective. A specific emotional situation.
 
 7. SUBJECT DIRECTION
-How subjects are posed, styled, and related to camera. Specific enough to direct a model on set.
+Posture, styling, relationship to camera, level of eye contact.
 
 8. ENVIRONMENT DIRECTION
-The physical space. Materials, scale, condition, time of day, weather if exterior.
+Physical space, materials, scale, condition, time of day.
 
 9. VISUAL MOTIFS
-2-3 specific recurring visual elements that thread through every shot (a material, a shape, a light behavior, an object).
+2-3 recurring elements threaded across every shot.
 
 10. NARRATIVE ARC
-How the set of images progresses from first to last shot — emotional escalation, spatial progression, or temporal shift.
+How the set progresses from first to last — emotional, spatial, or temporal.
+
+═══════════════════════════════════════════════════════════════
+CINEMATIC IMAGE PRINCIPLES
+═══════════════════════════════════════════════════════════════
+
+Real cinematic images are NOT clean, NOT perfect, NOT evenly lit. Apply these principles:
+
+IMPERFECTION IS REALISM
+- Film grain, chromatic aberration, lens flares, halation on highlights — these are features, not artifacts
+- Skin has pores, uneven tone, micro-texture. Fabric has creases, pulls, uneven drape. Surfaces have wear.
+- Perfect symmetry and uniform lighting are the hallmarks of AI-generated images. Asymmetry is cinematic.
+
+CONTRAST AND SHADOW ARE NOT FLAWS
+- Dense shadows with lost detail are a creative choice. Crushed blacks, blown highlights — these define the mood.
+- Not every surface needs to be visible. What you hide is as important as what you show.
+- High-key and low-key are specific lighting decisions, not "too bright" or "too dark."
+
+MOTIVATED CHOICES
+- Every element in frame has a reason. The light comes from somewhere physical. The depth of field isolates something specific.
+- A shallow depth of field with bokeh is not "soft" — it's a deliberate focus hierarchy that tells the viewer where to look.
+- Motion blur, lens distortion, grain — these are intentional when they serve the emotional register.
+
+LESS IS MORE
+- An empty frame with one element in the right place is more powerful than a full frame with everything.
+- Negative space creates tension, solitude, scale, or breathing room. It's never wasted.
+- The fewer elements in a frame, the more each one matters.
 
 BRAND/DESIGNER TRANSLATION:
-If the user mentions brands or designers, translate them into their VISUAL CHARACTERISTICS:
-- "Jil Sander" → "minimalist tailoring, architectural lines, dove grey and ivory palette, structured wool, absence of ornament"
-- "Helmut Newton" → "high-contrast black and white, hard directional light, angular posed confidence, polished surfaces"
-- Always translate — never leave a brand name as the description.
+Always translate brand references into visual characteristics. Never leave a brand name as the description.
 
 RULES:
-- Every field must be concrete enough to replicate without interpretation
-- No hedging ("perhaps", "could be", "maybe") — commit to specific choices
+- Every field: concrete enough to replicate without interpretation
+- No hedging — commit to specific choices
 - No options or alternatives — one answer per field
-- If the user's description is vague, make the best specific choice and commit to it
-- The brief is a CONTRACT — downstream prompts must follow it exactly
+- The brief is a CONTRACT
 
-Return ONLY valid JSON matching this structure:
+Return ONLY valid JSON:
 {
+  "concepts": [
+    { "concept": "concept description", "role": "primary", "frame": 1, "fiveWordPitch": "five words max" },
+    { "concept": "supporting element", "role": "supporting", "frame": 1, "fiveWordPitch": "five words" },
+    { "concept": "next primary concept", "role": "primary", "frame": 2, "fiveWordPitch": "five words" }
+  ],
   "colorGrade": "single sentence — the exact color grade",
   "colorAnchors": ["#XXXXXX", "#XXXXXX", "#XXXXXX"],
-  "lighting": "exact lighting setup description",
-  "lens": "exact lens and camera description",
+  "lighting": "exact lighting setup",
+  "lens": "exact lens and camera",
   "materials": "dominant materials and textures",
   "mood": "exact emotional register",
   "subjectDirection": "how subjects are treated",
   "environmentDirection": "the physical space",
   "visualMotifs": ["motif 1", "motif 2", "motif 3"],
   "narrativeArc": "how the set progresses",
-  "fullBrief": "the complete brief as a single flowing paragraph (~300 words) combining all of the above into a unified production document"
+  "fullBrief": "complete brief as flowing paragraph (~300 words)"
 }`
 
 export function buildBriefUserMessage(
   userInputs: UserInputs,
   mode: GenerationMode,
+  promptCount: number,
   visualStyleCues?: VisualStyleCues,
   imageLabels?: ImageLabel[]
 ): string {
   const lines: string[] = []
 
   lines.push(`MODE: ${mode === 'generate' ? 'Image Generation' : mode === 'edit' ? 'Image Editing' : 'Video Generation'}`)
+  lines.push(`FRAMES REQUESTED: ${promptCount}`)
+  lines.push(`Assign exactly ${promptCount} primary concepts — one per frame.`)
 
   if (visualStyleCues) {
     lines.push('\n=== VISUAL ANALYSIS (from reference images) ===')
@@ -149,7 +212,7 @@ export function buildBriefUserMessage(
     lines.push('(No inputs provided — create a compelling cinematic brief based on your best creative judgment.)')
   }
 
-  lines.push('\nLock the brief. Be specific. Commit to every choice.')
+  lines.push('\nExtract concepts, rank them, assign one primary per frame. Then lock the production brief.')
 
   return lines.join('\n')
 }
@@ -161,38 +224,47 @@ export function buildBriefUserMessage(
 function buildGenerateSystemPrompt(targetModel: TargetModel): string {
   const profile = MODEL_PROFILES[targetModel]
 
-  return `You are a prompt technician. You receive a LOCKED CREATIVE BRIEF and you translate it into image generation prompts. You do NOT add creative ideas. You do NOT interpret. You TRANSCRIBE the brief into prompt format.
+  return `You are a prompt technician. You receive a LOCKED CREATIVE BRIEF with pre-assigned concept hierarchy, and you translate each frame into a single image generation prompt. You do NOT add creative ideas. You TRANSCRIBE the brief.
 
 TARGET MODEL: ${profile.label}
 ${profile.promptRules}
 
 YOUR ROLE:
 - The creative brief is your ONLY source of truth
-- Every visual decision has already been made in the brief
+- Each frame has ONE assigned primary concept. That concept is the reason the frame exists.
 - Your job is FORMAT CONVERSION: brief → model-optimized prompts
-- If the brief says "desaturated cool tones with lifted blacks" then EVERY prompt contains those exact words
 - Zero creative latitude. Zero embellishment. Zero interpretation.
 
+SINGLE-CONCEPT-PER-FRAME DISCIPLINE:
+This is the most important rule. Every cinematic frame communicates ONE clear idea.
+- The PRIMARY concept from the brief gets ~70% of the prompt's descriptive weight
+- Supporting elements get ~20% — they exist only to reinforce the primary
+- Atmosphere (light, color, grade) gets ~10% — it is the constant medium, not the subject
+- If you cannot summarize the frame's purpose in 5 words, the prompt has too many ideas
+- MAX 2 visual subjects per frame. One primary, one secondary if essential. Two is already dense.
+- Negative space, empty areas, minimal composition — these are POWERFUL. A frame does not need to be full.
+
+CINEMATIC REALISM — THESE ARE FEATURES, NOT ARTIFACTS:
+- Film grain, halation on highlights, chromatic aberration, lens flares — include where motivated
+- Dense shadows with lost detail, crushed blacks, blown highlights — these define mood, not exposure errors
+- Shallow depth of field is a focus hierarchy telling the viewer where to look — not "softness"
+- Asymmetry, imperfect framing, environmental wear — these are marks of reality
+- Perfect uniformity (even lighting, symmetrical composition, flawless surfaces) reads as AI-generated
+
 PROMPT STRUCTURE:
-1. Each prompt: [color_grade_from_brief] [subject+action_from_brief] [environment_from_brief] [lighting_from_brief] [lens_from_brief]
-2. Length: ${profile.optimalLengthMin}-${profile.optimalLengthMax} words per prompt
-3. Each prompt uses a different camera angle: Wide Establishing / Medium / Close-Up / Low-Angle / High-Angle / Dutch Angle
+1. Lead with the primary concept — what is THIS frame about
+2. One supporting element if needed
+3. Environment/atmosphere as context
+4. Color grade and lighting (verbatim from brief)
+5. Lens (verbatim from brief)
+Length: ${profile.optimalLengthMin}-${profile.optimalLengthMax} words per prompt.
 
-MANDATORY REPETITION ACROSS ALL PROMPTS:
-These elements from the brief must appear VERBATIM in every single prompt:
-- The color grade sentence — copy it word for word
+MANDATORY REPETITION:
+These appear VERBATIM in every prompt:
+- The color grade sentence — word for word
 - The 3 color anchor hex values
-- The lighting setup description
+- The lighting setup
 - The lens/camera specification
-The ONLY things that change between prompts are: camera angle, subject action/pose, and framing.
-
-PROMPT WRITING RULES:
-- Write in complete natural language sentences — not comma lists or keyword tags
-- Each prompt is ~2-4 sentences following this order: subject+action → environment → lighting → camera
-- Never combine contradictory modifiers (e.g., "close-up wide-angle")
-- Avoid text/typography in the image unless specifically requested
-- Ground every element in physical reality — specify materials, weathering, surface finish
-- 3-5 primary visual concepts per prompt maximum; more creates noise
 
 ${NATURALISM_VOCABULARY}
 
@@ -200,14 +272,14 @@ ${QWEN_ENCODER_RULES}
 
 ${FORBIDDEN_LANGUAGE}
 
-COHERENCE VALIDATION (verify before returning):
-- Extract the color grade from the brief. Is it VERBATIM in every prompt? If not, fix.
-- Are the 3 hex color anchors in every prompt? If not, fix.
-- Is the same lighting setup in every prompt? If not, fix.
-- Is the same lens in every prompt? If not, fix.
-- Do the visual motifs from the brief appear across prompts? If not, fix.
-- Does the narrative arc from the brief progress across the set? If not, fix.
-- No prompt falls outside ${profile.optimalLengthMin}-${profile.optimalLengthMax} words
+VALIDATION:
+- Does each prompt have exactly ONE clear primary concept? If a prompt tries to say two things, cut one.
+- Can you summarize each frame in 5 words? If not, simplify.
+- Is the color grade VERBATIM in every prompt?
+- Are the 3 hex anchors in every prompt?
+- Same lighting, same lens in every prompt?
+- Does the set follow the narrative arc?
+- No prompt outside ${profile.optimalLengthMin}-${profile.optimalLengthMax} words
 
 OUTPUT: Return ONLY valid JSON:
 {
@@ -334,6 +406,33 @@ export function buildUserMessage(
   if (creativeBrief && mode === 'generate') {
     lines.push('\n=== LOCKED CREATIVE BRIEF — YOUR ONLY SOURCE OF TRUTH ===')
     lines.push('Every visual decision is made. You are a transcriber, not a creative.')
+
+    // Concept hierarchy — per-frame assignments
+    if (creativeBrief.concepts?.length > 0) {
+      lines.push('')
+      lines.push('=== CONCEPT HIERARCHY (one primary concept per frame) ===')
+      const frameMap = new Map<number, typeof creativeBrief.concepts>()
+      for (const c of creativeBrief.concepts) {
+        const arr = frameMap.get(c.frame) ?? []
+        arr.push(c)
+        frameMap.set(c.frame, arr)
+      }
+      for (const [frame, concepts] of Array.from(frameMap.entries()).sort((a, b) => a[0] - b[0])) {
+        const primary = concepts.find(c => c.role === 'primary')
+        const supporting = concepts.filter(c => c.role !== 'primary')
+        lines.push(`\nFRAME ${frame}:`)
+        if (primary) {
+          lines.push(`  PRIMARY (70% of prompt): ${primary.concept}`)
+          lines.push(`  5-word pitch: "${primary.fiveWordPitch}"`)
+        }
+        for (const s of supporting) {
+          lines.push(`  ${s.role.toUpperCase()} (${s.role === 'supporting' ? '20%' : '10%'}): ${s.concept}`)
+        }
+      }
+      lines.push('')
+      lines.push('CRITICAL: Each frame prompt must be DOMINATED by its primary concept. Supporting elements serve the primary — they do not compete with it. If you find a prompt trying to say two things equally, cut one.')
+    }
+
     lines.push('')
     lines.push(`COLOR GRADE (copy VERBATIM into every prompt): ${creativeBrief.colorGrade}`)
     lines.push(`COLOR ANCHORS (include in every prompt): ${creativeBrief.colorAnchors.join(', ')}`)
@@ -347,11 +446,11 @@ export function buildUserMessage(
     lines.push(`NARRATIVE ARC: ${creativeBrief.narrativeArc}`)
     lines.push('')
     lines.push('=== RULES ===')
-    lines.push('1. The color grade sentence above must appear WORD FOR WORD in every prompt.')
-    lines.push('2. The 3 hex color anchors must appear in every prompt.')
-    lines.push('3. The lighting description must appear in every prompt.')
-    lines.push('4. The lens specification must appear in every prompt.')
-    lines.push('5. The ONLY variation between prompts: camera angle, subject pose/action, and framing.')
+    lines.push('1. Each frame has ONE primary concept — make it dominate the prompt.')
+    lines.push('2. The color grade sentence must appear WORD FOR WORD in every prompt.')
+    lines.push('3. The 3 hex color anchors must appear in every prompt.')
+    lines.push('4. Same lighting and lens in every prompt.')
+    lines.push('5. Max 2 subjects per frame. Fewer is better. Empty space is powerful.')
     lines.push('6. Follow the narrative arc from first to last shot.')
 
     return lines.join('\n')

@@ -205,8 +205,34 @@ export default function PromptList({
 
           {showBrief && (
             <div className="px-4 pb-4 space-y-3 border-t border-neutral-100">
+              {/* Concept hierarchy */}
+              {creativeBrief.concepts?.length > 0 && (
+                <div className="pt-3 space-y-2">
+                  <span className="text-[10px] uppercase tracking-widest text-neutral-400">Concept Hierarchy</span>
+                  {Array.from(new Set(creativeBrief.concepts.map(c => c.frame))).sort((a, b) => a - b).map(frame => {
+                    const frameConcepts = creativeBrief.concepts.filter(c => c.frame === frame)
+                    const primary = frameConcepts.find(c => c.role === 'primary')
+                    const others = frameConcepts.filter(c => c.role !== 'primary')
+                    return (
+                      <div key={frame} className="flex items-start gap-2 text-xs">
+                        <span className="text-neutral-300 font-mono w-4 flex-shrink-0 pt-0.5">{frame}</span>
+                        <div className="min-w-0">
+                          {primary && (
+                            <div className="text-neutral-700 font-medium">{primary.fiveWordPitch}</div>
+                          )}
+                          {others.map((c, i) => (
+                            <div key={i} className="text-neutral-400 text-[11px]">{c.role}: {c.concept}</div>
+                          ))}
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+
+              {/* Color anchors */}
               {creativeBrief.colorAnchors?.length > 0 && (
-                <div className="flex items-center gap-3 pt-3">
+                <div className="flex items-center gap-3 pt-2">
                   <div className="flex gap-1.5">
                     {creativeBrief.colorAnchors.map((hex, i) => (
                       <div
@@ -222,6 +248,8 @@ export default function PromptList({
                   </span>
                 </div>
               )}
+
+              {/* Technical specs */}
               <div className="pt-2 space-y-2">
                 <div><span className="text-[10px] uppercase tracking-widest text-neutral-400">Color Grade</span><p className="text-xs text-neutral-600 mt-0.5">{creativeBrief.colorGrade}</p></div>
                 <div><span className="text-[10px] uppercase tracking-widest text-neutral-400">Lighting</span><p className="text-xs text-neutral-600 mt-0.5">{creativeBrief.lighting}</p></div>
@@ -236,6 +264,8 @@ export default function PromptList({
                   </div>
                 )}
               </div>
+
+              {/* Full brief */}
               <div className="pt-1 border-t border-neutral-100">
                 <p className="text-xs text-neutral-600 leading-relaxed whitespace-pre-line">{creativeBrief.fullBrief}</p>
               </div>

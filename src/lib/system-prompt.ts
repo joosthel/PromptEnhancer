@@ -25,10 +25,22 @@ export interface VisualStyleCues {
 }
 
 /**
+ * A single concept extracted from the user's input, ranked by visual importance.
+ * Each frame in the final set is built around ONE primary concept.
+ */
+export interface ConceptAssignment {
+  concept: string
+  role: 'primary' | 'supporting' | 'atmosphere'
+  frame: number
+  fiveWordPitch: string
+}
+
+/**
  * Locked creative brief that sits between vision analysis and prompt generation.
  * Every prompt is derived strictly from this document — zero creative drift.
  */
 export interface CreativeBrief {
+  concepts: ConceptAssignment[]
   colorGrade: string
   colorAnchors: string[]
   lighting: string

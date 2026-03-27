@@ -100,7 +100,7 @@ export async function POST(request: NextRequest) {
     // Also runs for edit mode if user provided a description
     // -----------------------------------------------------------------------
     if (mode === 'generate' || mode === 'video' || (mode === 'edit' && hasUserInputs)) {
-      const briefUserMessage = buildBriefUserMessage(userInputs, mode, visualStyleCues, imageLabels)
+      const briefUserMessage = buildBriefUserMessage(userInputs, mode, promptCount, visualStyleCues, imageLabels)
 
       const briefResponse = await callOpenRouter({
         model: 'minimax/minimax-m2.5',
