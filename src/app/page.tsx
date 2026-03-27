@@ -5,6 +5,7 @@ import ImageUploader from '@/components/ImageUploader'
 import InputForm from '@/components/InputForm'
 import PromptList from '@/components/PromptList'
 import ModelBar from '@/components/ModelBar'
+import LoadingAnimation, { type LoadingPhase as AnimLoadingPhase } from '@/components/LoadingAnimation'
 import { ImageInput } from '@/lib/image-utils'
 import { UserInputs, VisualStyleCues, ImageLabel, CreativeBrief } from '@/lib/system-prompt'
 import { TargetModel, GenerationMode, DEFAULT_MODEL, DEFAULT_MODE, getDefaultModelForMode } from '@/lib/model-profiles'
@@ -117,9 +118,9 @@ export default function Home() {
 
   const loadingText =
     loadingPhase === 'analyzing'
-      ? 'Analyzing references\u2026'
+      ? 'Analyzing\u2026'
       : loadingPhase === 'briefing'
-        ? 'Locking creative brief\u2026'
+        ? 'Locking brief\u2026'
         : loadingPhase === 'generating'
           ? 'Deriving prompts\u2026'
           : ''
@@ -194,8 +195,8 @@ export default function Home() {
             </div>
           )}
           {isLoading && (
-            <div className="flex items-center justify-center h-64 text-sm text-neutral-400">
-              {loadingText}
+            <div className="flex items-center justify-center h-64">
+              <LoadingAnimation phase={loadingPhase as AnimLoadingPhase} />
             </div>
           )}
         </div>

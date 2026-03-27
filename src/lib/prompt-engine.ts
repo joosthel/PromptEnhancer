@@ -20,23 +20,31 @@ export type { CreativeBrief }
 // Shared vocabulary blocks
 // ---------------------------------------------------------------------------
 
-const FORBIDDEN_LANGUAGE = `FORBIDDEN LANGUAGE (never use unless the user's own words contain them):
+const FORBIDDEN_LANGUAGE = `FORBIDDEN WORDS (these add noise with zero directional value — never use):
 "ethereal", "dreamlike", "magical", "otherworldly", "surreal", "breathtaking",
 "whimsical", "fantastical", "enchanted", "mystical", "stunning", "captivating",
-"mesmerizing", "awe-inspiring", "hauntingly beautiful"`
+"mesmerizing", "awe-inspiring", "hauntingly beautiful", "masterpiece", "best quality",
+"8k", "ultra HD", "hyperrealistic" — instead describe specifically what makes the image precise`
 
-const NATURALISM_VOCABULARY = `NATURALISM VOCABULARY (use to counter synthetic look):
+const NATURALISM_VOCABULARY = `NATURALISM VOCABULARY (weave into sentences to counter synthetic AI look):
 - Surface: scuffed, patina'd, rain-spotted, sun-faded, dust-settled, fingerprint-smudged
-- Skin: pores visible, uneven tone, slight sheen, natural blemishes, micro-wrinkles
+- Skin: pores visible, uneven tone, slight sheen, natural blemishes, fine lines
 - Environment: asymmetric, slightly cluttered, lived-in, imperfect, worn edges
 - Light: uneven falloff, color cast from environment, accidental spill, motivated shadows`
 
-const LENS_VOCABULARY = `LENS AND LIGHTING VOCABULARY:
+const LENS_VOCABULARY = `LENS AND LIGHTING VOCABULARY (draw from this when composing sentences):
 Lens: 21mm wide, 35mm standard, 50mm natural, 85mm portrait, 135mm compressed, anamorphic 2.39:1, tilt-shift
 Light: overcast diffuse, tungsten practical, sodium vapour, golden hour side-rake, HMI through diffusion,
        bounce from concrete, chiaroscuro, motivated fill, fluorescent green-shift, push-processed underexposure,
        single-source top-light, dappled canopy light, mercury vapour blue-green, neon spill, backlit rim separation
 Grade: bleach bypass, cross-processed, lifted blacks, crushed shadows, split-toned highlights, analog halation`
+
+const QWEN_ENCODER_RULES = `TEXT ENCODER NOTES (Flux 2 Klein and Z-Image both use Qwen — an LLM-based text encoder):
+- Write in COMPLETE SENTENCES, not comma-separated keyword tags. Qwen processes natural language; sentence structure encodes semantic relationships that keyword lists cannot.
+- ORDER: subject → environment → lighting → mood → camera. Qwen is autoregressive — details mentioned later are deprioritized, so lead with what matters most.
+- Describe RELATIONSHIPS between elements, not just elements ("warm side light raking across the fabric's texture" beats "fabric, warm light").
+- Mood and emotional register translate well — Qwen understands contextual and narrative language ("quiet tension of a conversation just ended" implies a lighting and spatial arrangement).
+- Avoid repeating the same concept in multiple ways in one prompt — say it once, precisely.`
 
 // ---------------------------------------------------------------------------
 // CREATIVE BRIEF — locked production document derived from vision + user input
@@ -178,14 +186,17 @@ These elements from the brief must appear VERBATIM in every single prompt:
 - The lens/camera specification
 The ONLY things that change between prompts are: camera angle, subject action/pose, and framing.
 
-ARTIFACT PREVENTION:
-- When hands are visible, specify "five fingers on each hand" and what the hands are doing
-- Never combine contradictory modifiers
-- Avoid text/typography in the image
-- Ground every element in physical reality — specify materials, weathering, wear
-- Limit each prompt to 3-5 primary visual concepts
+PROMPT WRITING RULES:
+- Write in complete natural language sentences — not comma lists or keyword tags
+- Each prompt is ~2-4 sentences following this order: subject+action → environment → lighting → camera
+- Never combine contradictory modifiers (e.g., "close-up wide-angle")
+- Avoid text/typography in the image unless specifically requested
+- Ground every element in physical reality — specify materials, weathering, surface finish
+- 3-5 primary visual concepts per prompt maximum; more creates noise
 
 ${NATURALISM_VOCABULARY}
+
+${QWEN_ENCODER_RULES}
 
 ${FORBIDDEN_LANGUAGE}
 
@@ -221,19 +232,19 @@ TARGET MODEL: ${profile.label}
 ${profile.promptRules}
 
 ${editRules ? editRules + '\n' : ''}EDIT PROMPT PRINCIPLES:
-- Describe what the final image should look like, not "change X to Y"
+- Write in complete sentences describing the DESIRED RESULT — not "change X to Y"
 - Be specific about what should change and what should be preserved
 - One major change per prompt yields best quality
-- Keep prompts focused — edit prompts should be shorter and more targeted than generation prompts
 - Length: ${profile.optimalLengthMin}-${profile.optimalLengthMax} words per prompt
 - Max reference images: ${profile.maxReferenceImages}
 
 REFERENCE IMAGE AWARENESS:
-- If the user labeled their reference images, incorporate those labels into the prompt context
 - "style reference" → apply that image's visual style to the output
 - "subject" / "face" → preserve that person/object in the new scene
 - "background" → use as the environment, replace or modify the foreground
 - Unlabeled references → infer purpose from the user's description
+
+${QWEN_ENCODER_RULES}
 
 ${FORBIDDEN_LANGUAGE}
 
@@ -259,12 +270,11 @@ TARGET MODEL: ${profile.label}
 ${profile.promptRules}
 
 VIDEO PROMPT PRINCIPLES:
-- Focus on what MOVES and HOW — subject action, camera motion, scene evolution
+- Write in complete sentences describing MOTION and TEMPORAL CHANGES — not static image attributes
 - Do NOT re-describe visual content that a reference image already provides
-- Specify camera movement explicitly: dolly, tracking, crane, pan, tilt, steadicam, handheld
+- Specify camera movement explicitly within the sentence (e.g., "a slow dolly pushes into the subject's face as...")
 - One dominant action per clip — don't overload
 - Include temporal pacing: speed, rhythm, pauses, acceleration
-- Sensory details for atmosphere: textures, temperatures, ambient sounds
 - Length: ${profile.optimalLengthMin}-${profile.optimalLengthMax} words per prompt
 
 MOTION VOCABULARY:
