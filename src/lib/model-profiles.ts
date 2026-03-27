@@ -50,41 +50,45 @@ export const MODEL_PROFILES: Record<TargetModel, ModelProfile> = {
     label: 'Flux 2 Pro',
     modes: ['generate'],
     promptFormat: 'natural',
-    optimalLengthMin: 70,
-    optimalLengthMax: 120,
+    optimalLengthMin: 40,
+    optimalLengthMax: 80,
     supportsNegativePrompts: false,
     maxReferenceImages: 9,
     knownWeaknesses: ['hands', 'text-rendering'],
-    promptRules: `FLUX 2 [PRO] RULES:
-- First 5-10 words carry the most weight — open with the strongest visual descriptor
-- 70-120 words. Density earns quality.
-- Always name: lens, depth of field, specific lighting quality
-- No negative prompts. No prompt weights. No meta-language ("cinematic shot of", "photograph of")
-- Use concrete, active, specific language — sensory verbs: cuts, rakes, bleeds, pools, spills
-- Lead with texture, light, or atmosphere — never open with "A" or "The"
-- Supports hex color codes directly in prompt for precise color matching
-- Natural language prose works best, not keyword lists`,
+    promptRules: `FLUX 2 [PRO] — TEXT ENCODER: Mistral-Small-3.2-24B (24B decoder-only VLM)
+Features extracted from layers [10, 20, 30] → 15,360-dim → projected to 6,144. Token limit: 512. BFL-recommended optimal: 40-80 words.
+
+ENCODER-SPECIFIC RULES (from BFL official docs and arXiv:2507.09595):
+- WORD ORDER IS CRITICAL: BFL explicitly documents positional bias — "FLUX.2 pays more attention to what comes first." Order strictly: Main subject → Key action → Critical style → Essential context → Secondary detail. Never bury the lead.
+- Natural language sentences only. No comma-separated keyword tags — Mistral was trained on natural language and encodes sentence relationships, not keyword frequency.
+- No negative prompts (not supported architecturally).
+- No meta-language: never write "a photograph of", "an image of", "cinematic shot of" — describe the scene directly.
+- Hex codes for color: BFL specifically recommends "#FF5733" style notation over vague color names — Mistral's world knowledge encodes color science precisely.
+- Lighting: use technique names, not adjectives. "Single-source HMI through 4×4 light grid" beats "dramatic lighting." Mistral knows what these setups look like.
+- 40-80 words optimal. Longer prompts (up to 150 words) for complex multi-element scenes. Beyond 150: diminishing returns and attention dilution.`,
   },
   'z-image': {
     id: 'z-image',
     label: 'Z-Image',
     modes: ['generate'],
     promptFormat: 'structured',
-    optimalLengthMin: 80,
-    optimalLengthMax: 250,
+    optimalLengthMin: 100,
+    optimalLengthMax: 300,
     supportsNegativePrompts: false,
     maxReferenceImages: 0,
     knownWeaknesses: ['hands', 'contradictory-styles'],
-    promptRules: `Z-IMAGE RULES:
-- 6-part structure: Subject > Scene > Composition > Lighting > Style > Constraints
-- 80-250 words optimal. Over 300 may truncate.
-- NO negative prompts — all constraints go in the positive prompt
-- Include "sharp focus", "crisp details" explicitly for quality
-- Specify camera and lens: "Shot on Leica M6 with Kodak Portra 400 film grain"
-- Avoid contradictory styles ("photorealistic cartoon")
-- Limit to 3-5 primary visual concepts per prompt
-- COLOR ANCHORING IS CRITICAL FOR Z-IMAGE: The Style section of every prompt must contain the identical color grade description and the same 2-3 named/hex colors. Z-Image is sensitive to color language — if you say "warm tones" in one prompt and "golden hues" in another, the outputs will diverge. Use the exact same color phrase every time.
-- When the user references brands or designers, translate to visual properties. Z-Image does not reliably understand fashion brand names — describe the aesthetic instead.`,
+    promptRules: `Z-IMAGE — TEXT ENCODER: Qwen3-4B (decoder-only LLM, bilingual Chinese/English)
+Architecture: S3-DiT — text tokens, visual semantic tokens, and image tokens are CONCATENATED into a single unified sequence. 3D RoPE: text tokens occupy the temporal dimension; image tokens occupy spatial dimensions. Source: arXiv:2511.22699 (ByteDance/Tongyi MAI).
+
+ENCODER-SPECIFIC RULES (from arXiv:2511.22699 and Qwen3 architecture):
+- Natural language sentences, NOT keyword tags. However, Z-Image's training regime included "long, medium and short captions, as well as tags and simulated user prompts" (paper Section 3.2) — making it more tolerant of both styles than other LLM-encoder models.
+- Positional bias applies (decoder-only causal attention): put the most critical visual concepts in the first sentence. Text at the end of a long prompt competes with fewer attended tokens.
+- The single-stream architecture means text and image tokens share the same attention budget. Keep prompts dense but focused — verbose prompts have diminishing returns as image tokens dominate the sequence.
+- Bilingual: Chinese-language prompts are natively supported with full fidelity (Qwen3-4B is bilingual by design).
+- 100-300 words optimal. Short (25-50 words) for quick iteration; 150-300 for detailed production prompts.
+- NO negative prompts — encode constraints positively.
+- COLOR ANCHORING CRITICAL: Single-stream attention means color language must be explicit and identical across all prompts. One color grade phrase + 2-3 hex codes repeated verbatim. Any paraphrase diverges the output.
+- Brand/designer references: Qwen3-4B has broad world knowledge and may recognize some fashion references — but translate to visual properties regardless for maximum reliability.`,
   },
   'nanobanana-2': {
     id: 'nanobanana-2',
@@ -119,24 +123,26 @@ export const MODEL_PROFILES: Record<TargetModel, ModelProfile> = {
     modes: ['edit'],
     promptFormat: 'natural',
     optimalLengthMin: 40,
-    optimalLengthMax: 120,
+    optimalLengthMax: 100,
     supportsNegativePrompts: false,
     maxReferenceImages: 4,
     knownWeaknesses: ['fine-detail-at-speed'],
-    promptRules: `FLUX 2 KLEIN 9B RULES:
-- 9B distilled model, 4-step inference — optimized for speed
-- Natural language, front-load the most important visual elements
-- 40-120 words optimal
-- No negative prompts — describe desired outcomes only
-- Supports hex color codes for precise color matching
-- Sub-second generation makes it ideal for iterative editing`,
+    promptRules: `FLUX 2 KLEIN 9B — TEXT ENCODER: Qwen3-8B-FP8 (decoder-only, text-only LLM)
+Features extracted from layers [9, 18, 27] → 12,288-dim context. Token limit: 512. "9B" = combined system (~1B flow model + 8B text encoder). Source: FLUX.2-klein-9B HF model card; DeepWiki code analysis.
+
+ENCODER-SPECIFIC RULES:
+- Natural language sentences — Qwen3-8B is instruction-tuned and processes coherent language far better than keyword lists (thinking mode disabled: enable_thinking=False in FLUX.2's implementation).
+- Positional bias: front-load the most critical visual concepts. Qwen3's causal attention means early tokens receive more cross-attention from later tokens — what you say first has more influence.
+- Text-only encoder: no multimodal capability, no prompt upsampling, no content filtering. What you write is what gets encoded.
+- No negative prompts (not supported).
+- Hex codes for color specificity — Qwen3 has strong color science vocabulary from its LLM training corpus.
+- 40-100 words optimal for editing tasks (focused, single-intent). The 4-step distilled inference favors concise, high-signal prompts.`,
     editRules: `FLUX 2 KLEIN 9B EDIT RULES:
 - Prompt-driven editing — no masks needed, up to 4 reference images
-- Describe the desired RESULT in the edited region, not the transformation
-- Keep edit prompts focused and concise — the model works best with clear, single-intent instructions
-- For style transfer: describe the target aesthetic, reference provides the structure
-- For color changes: use hex codes directly ("change background to #FF6B35")
-- Strength of edit is controlled by inference parameters, not prompt verbosity`,
+- Describe the desired RESULT, not the operation: what should the final image look like, not "change X to Y"
+- Single intent per prompt yields cleanest edits — this is a 4-step model optimized for speed over complexity
+- For color changes: use hex codes directly in a natural sentence ("the background shifts to a deep slate #2C3E50")
+- Strength of edit is controlled by inference parameters, not prompt verbosity — keep the prompt tight`,
   },
   'veo-3-1': {
     id: 'veo-3-1',
@@ -235,7 +241,7 @@ export const FIX_CATEGORIES: FixCategory[] = [
   {
     id: 'hands',
     label: 'Hands',
-    instruction: 'Hands are visible in this scene — add explicit five-finger anatomy, natural hand positioning, relaxed grip. Specify what the hands are doing.',
+    instruction: 'Hands are visible — describe the gesture, grip, and purpose with precision. Focus on what the hands are doing and how they relate to surrounding objects. Natural, purposeful hand descriptions produce better results than anatomical correction instructions.',
   },
   {
     id: 'lighting',
