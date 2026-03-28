@@ -93,22 +93,23 @@ Front-load the primary concept. What you say first dominates.
 
 CINEMATIC LIGHTING — THE MOST IMPORTANT RULE:
 NEVER name lighting equipment (softbox, HMI, key light, fill, bounce, reflector, diffusion panel).
-Klein renders equipment names as OBJECTS IN THE SCENE. You will get softboxes and light rigs visible in the image.
-Instead, use CINEMATOGRAPHER and FILM REFERENCES to invoke lighting quality:
-- "Roger Deakins lighting" → precise single-source, deep motivated shadows, naturalistic color
-- "Greig Fraser cinematography" → desaturated haze, silhouettes against scale, amber-teal tension
-- "Emmanuel Lubezki natural light" → magic hour, available light, God-rays
-- "lit like Blade Runner 2049" → warm amber pooling in cold blue void, fog diffusion
-- "lit like The Godfather" → faces emerging from deep shadow, warm overhead practical light
-- "Bradford Young underexposed richness" → shadow detail that breathes, dark skin luminosity
-Describe how light FALLS and FEELS, not what creates it: "warm spill from the next room", "cold window light cutting across", "single shaft of light from above"
+Klein renders equipment names as OBJECTS IN THE SCENE — you will get softboxes visible in the image.
+NEVER name cinematographers, directors, or film titles — Klein cannot interpret these as style references.
+Instead, describe light through its VISIBLE EFFECT on the scene:
+- Direction and behavior: "cold light cutting across from the left", "warm glow pooling on the floor"
+- Quality through effect: "overcast and flattened, giving a bluish desaturated tone", "harsh side-light carving deep shadows"
+- Shadow as subject: "deep shadow swallowing the background", "half the face lost in darkness"
+- Color temperature as feeling: "cold blue-grey wash", "warm amber spill", "tungsten warmth against cool daylight"
+- Atmosphere: "hazy air distorting the distance", "dust motes catching light", "rain-wet reflections on dark pavement"
+Write prompts like storyboard descriptions — what the camera SEES and what the atmosphere FEELS like.
 
 WHAT WORKS WELL:
-- Camera bodies invoke color science: "Shot on Canon EOS R5", "Shot on Hasselblad X2D", "Shot on ARRI Alexa Mini"
-- Film stocks: "Kodak Portra 400", "Fuji Velvia", "Expired Ektachrome 64", "35mm film grain"
+- Storyboard-style descriptions — what the camera sees, how the atmosphere feels
+- Light described through effect: "cold overcast wash with bluish flattened tone", not equipment names
 - Hex codes bound to surfaces: "the wall is #2C3E50" — Klein follows hex values extremely well
 - Material textures: "brushed aluminum", "raw silk", "cracked leather", "rain-spotted concrete"
-- Cinematographer names as lighting shorthand — invokes their entire visual language
+- Emotional composition: "grounded and urgent perspective", "oppressive weight", "quiet tension"
+- Sensory atmosphere: "slightly wet or reflective ground", "hazy air", "dust-settled surfaces"
 
 ANTI-AI MEASURES (include in EVERY prompt):
 Klein's 1B flow model over-sharpens and smooths. Counteract with:

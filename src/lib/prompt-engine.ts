@@ -26,7 +26,9 @@ VAGUE ADJECTIVES: "ethereal", "dreamlike", "magical", "otherworldly", "surreal",
 "awe-inspiring", "hauntingly beautiful", "masterpiece", "best quality", "8k", "ultra HD", "hyperrealistic"
 LIGHTING EQUIPMENT (Klein renders these as visible objects): "softbox", "HMI", "key light", "fill light",
 "bounce light", "reflector", "diffusion panel", "beauty dish", "ring light", "strobe", "flash",
-"light array", "overhead light", "backlight panel" — use cinematographer/film references instead
+"light array", "overhead light", "backlight panel" — describe light through its visible EFFECT instead
+NAME-DROPPING: Do NOT name cinematographers, directors, or film titles in the prompt — Klein cannot interpret
+these as style references. Instead, DESCRIBE the visual quality you want.
 SHARPNESS AMPLIFIERS: "sharp focus", "crisp details", "high quality", "ultra detailed" — amplify AI look`
 
 const NATURALISM_VOCABULARY = `NATURALISM VOCABULARY — CRITICAL FOR KLEIN (its 1B flow model over-sharpens and smooths by default):
@@ -37,43 +39,47 @@ Every prompt MUST include at least 2 organic texture cues to counteract Klein's 
 - Environment: "asymmetric composition", "slightly cluttered", "lived-in", "worn edges", "sun-bleached", "water-stained"
 NEVER USE: "sharp focus", "crisp details", "high quality", "8k", "ultra detailed" — these AMPLIFY the AI look on Klein`
 
-const CINEMATIC_REFERENCE_VOCABULARY = `CINEMATIC REFERENCE VOCABULARY — USE THESE INSTEAD OF TECHNICAL LIGHTING DESCRIPTIONS:
+const CINEMATIC_PROMPT_STYLE = `HOW TO WRITE CINEMATIC PROMPTS FOR KLEIN:
 
-CRITICAL RULE: NEVER name lighting equipment (softbox, HMI, fill light, bounce, diffusion panel, reflector, key light).
-Klein's text encoder treats equipment names as OBJECTS TO RENDER — you will get softboxes and light rigs IN the image.
-Instead, evoke lighting QUALITY through cinematographer references, film references, and atmospheric descriptions.
+Write prompts like a STORYBOARD DESCRIPTION — describe what the camera SEES, how the light BEHAVES on surfaces, what the atmosphere FEELS like. The prompt should read like a shot breakdown from a film script.
 
-CINEMATOGRAPHER / DP REFERENCES (each name invokes a specific visual signature):
-- "Roger Deakins lighting" → precise, motivated single-source, deep shadows, naturalistic color, pools of light in darkness
-- "Greig Fraser cinematography" → desaturated palette, atmospheric haze, silhouettes against vast scale, amber-and-teal tension
-- "Emmanuel Lubezki natural light" → long-take naturalism, magic hour warmth, available light, God-rays through canopy
-- "Hoyte van Hoytema" → IMAX-scale intimacy, cool silvery palette, grain-heavy film texture, muted earth tones
-- "Bradford Young" → underexposed richness, dark skin luminosity, shadow detail that breathes, warm amber undertones
-- "Gordon Willis" → "Prince of Darkness" — faces half-lost in shadow, overhead pools of warm light, deep contrast
-- "Janusz Kamiński" → harsh backlight, bleached highlights, handheld immediacy, high-contrast desaturation
-- "Vittorio Storaro" → painterly color symbolism, warm/cool dramatic opposition, Renaissance light composition
-- "Robert Richardson" → saturated bold color, aggressive contrast, operatic lighting, deep blacks
-- "Robby Müller" → stripped-down naturalism, neon-and-fluorescent color, deadpan framing, flat available light
+CRITICAL: NEVER include any of these in the output prompt:
+- Lighting equipment names (softbox, HMI, key light, fill, bounce, reflector) — Klein renders them as objects
+- Cinematographer or director names — Klein doesn't understand these as style references, it tries to render text or portraits
+- Film title references ("lit like Blade Runner") — same problem, these are not understood as style shorthand
+- Camera body names or film stock names used as the ONLY style descriptor — use them sparingly alongside description
 
-FILM / LOOK REFERENCES:
-- "lit like Blade Runner 2049" → vast negative space, single warm source in cold void, fog diffusion, amber-in-teal
-- "lit like The Batman" → extreme low-key, red emergency light, rain-soaked reflections, noir silhouettes
-- "lit like Dune" → desert heat haze, desaturated warmth, silhouette against scale, sand-diffused light
-- "lit like The Godfather" → overhead warm practical light, faces emerging from deep shadow, amber tungsten
-- "lit like Arrival" → overcast cool diffusion, muted palette, fog, ethereal grey-blue, soft backlight
-- "Lost Highway atmosphere" → David Lynch neon-noir, unsettling beauty, sodium-vapor amber, deep black negative space
+INSTEAD, describe light, color, and atmosphere through their VISIBLE EFFECT on the scene:
 
-LIGHT QUALITY DESCRIPTORS (describe the EFFECT, not the equipment):
-- "light pooling on the floor", "warm spill from the next room", "cold window light cutting across"
-- "deep shadow swallowing the background", "single shaft of light from above", "neon glow bleeding into skin"
-- "overcast flat light flattening everything to texture", "backlit rim separating figure from void"
-- "dappled light through leaves", "tungsten warmth against cool daylight", "mercury vapor blue-green cast"
+LIGHT — describe how it FALLS and what it DOES:
+- Direction and behavior: "cold light cutting across from the left", "warm glow pooling on the floor", "single shaft of light from high above"
+- Quality through effect: "overcast and flattened, giving a bluish desaturated tone", "harsh side-light carving deep shadows across the face"
+- Color temperature as feeling: "cold blue-grey wash", "warm amber spill", "tungsten warmth against cool daylight from the window"
+- Shadow as subject: "deep shadow swallowing the background", "half the face lost in darkness", "long shadows stretching across wet concrete"
 
-LENS VOCABULARY:
-21mm wide, 35mm standard, 50mm natural, 85mm portrait, 135mm compressed, anamorphic 2.39:1, tilt-shift
+COLOR — describe the palette through surfaces and atmosphere:
+- "desaturated, muted tones with minimal contrast", "warm amber skin tones against cold steel-blue walls"
+- "bluish flattened tone", "deep blacks with lifted shadow detail", "color drained to near-monochrome"
+- Hex codes bound to surfaces: "the wall is #2C3E50", "skin catching warm #D4956A from the window"
 
-GRADE VOCABULARY:
-bleach bypass, cross-processed, lifted blacks, crushed shadows, split-toned highlights, analog halation, Kodak Portra warmth, Fuji Velvia saturation, expired film color drift`
+COMPOSITION — describe what the camera sees and why it matters:
+- Angle and feeling: "low angle creating a grounded, urgent perspective", "wide shot emphasizing scale and isolation"
+- Depth: "deep focus keeping both foreground and distance sharp", "shallow depth isolating the subject from a dissolving background"
+- Space: "negative space pressing the figure to the edge of frame", "the architecture dominating the upper two-thirds"
+- Motion: "motion blur on the hands suggesting urgency", "static frame against subject movement"
+
+ATMOSPHERE — sensory, emotional, physical:
+- "oppressive weight", "quiet tension", "humid stillness", "industrial cold"
+- Weather and air: "hazy pressure-wave distorting the air", "dust motes catching light", "rain-wet reflections on dark pavement"
+- Surface behavior: "slightly wet or reflective ground", "condensation on glass", "heat shimmer off metal"
+
+INTERNAL REFERENCE (use to inform your writing style — NEVER output these names in prompts):
+Study these visual languages and DESCRIBE their qualities without naming them:
+- Deakins: precise single-source, deep motivated shadows, naturalistic color, pools of light in darkness
+- Fraser: desaturated haze, silhouettes against vast scale, amber-teal tension
+- Lubezki: magic hour naturalism, available light, atmosphere as character
+- Willis: faces half-lost in shadow, warm overhead pools, deep contrast
+- Young: underexposed richness, shadow detail that breathes, warm amber undertones`
 
 const QWEN_ENCODER_RULES = `FLUX 2 KLEIN 9B — TEXT ENCODER ARCHITECTURE (Qwen3-8B-FP8, decoder-only LLM):
 Features extracted from Qwen3 layers [9, 18, 27] → 12,288-dim context vector. 4-step distilled inference, CFG locked at 1.0.
@@ -90,15 +96,12 @@ POSITIONAL BIAS (from Qwen3 causal attention):
 FRONT-LOAD the primary concept. What you say first dominates the output.
 
 PROMPT WRITING RULES:
-- Write COMPLETE SENTENCES, not comma-separated keywords. Qwen encodes semantic relationships through sentence structure.
+- Write like a STORYBOARD or SHOT DESCRIPTION — complete sentences describing what the camera sees
 - Describe RELATIONSHIPS between elements: "warm light raking across the fabric's texture" beats "fabric, warm light"
-- Mood and emotional register translate well — Qwen understands narrative language
+- Mood and emotional register translate well — Qwen understands narrative language ("quiet tension", "oppressive weight")
 - Say each concept ONCE, precisely. No synonym chains. No redundant modifiers.
-- Camera bodies invoke their color science: "Shot on Canon EOS R5", "Shot on Hasselblad X2D"
-- Film stocks are understood: "Kodak Portra 400", "Fuji Velvia", "Expired Ektachrome 64"
-- Cinematographer names invoke entire visual languages: "Roger Deakins lighting", "Greig Fraser cinematography"
-- Hex codes bound to objects: "the wall is #2C3E50" — Klein follows hex values extremely well
-- NEVER name lighting equipment (softbox, HMI, key light, fill, bounce, reflector) — Klein renders them as objects in the scene
+- Hex codes bound to surfaces: "the wall is #2C3E50" — Klein follows hex values extremely well
+- Describe light through its EFFECT on surfaces, not through equipment or names
 - NO negative prompts (distilled model). NO prompt weights. NO meta-language ("a photograph of").`
 
 // ---------------------------------------------------------------------------
@@ -151,13 +154,15 @@ One sentence defining the exact color treatment technically. This sentence will 
 3 hex colors: shadow, midtone, highlight/accent.
 
 3. CINEMATIC LIGHTING
-Describe the light QUALITY and FEELING — NOT the equipment. Reference a cinematographer or film whose lighting matches the mood.
-NEVER name equipment (softbox, HMI, fill light, bounce, reflector) — the downstream model renders equipment as objects.
-Instead: "Roger Deakins single-source side light with deep shadow falloff" or "lit like Blade Runner 2049 — warm amber pooling in cold blue void."
-Include: direction, quality (hard/soft), color temperature feel, shadow behavior, contrast level.
+Describe the light through its VISIBLE EFFECT on the scene — NOT through equipment or names.
+NEVER name equipment (softbox, HMI, fill light, bounce) or cinematographers/directors — the downstream model cannot interpret these.
+Instead describe: direction ("cold light cutting across from the left"), quality ("harsh side-light carving deep shadows"),
+color temperature as feeling ("cold blue-grey wash", "warm amber spill"), shadow behavior ("deep shadow swallowing the background"),
+contrast ("flattened tone with minimal contrast" or "high contrast with crushed blacks").
+Example: "Overcast cold light giving a bluish, desaturated tone with flattened contrast. Deep shadows pool in the architecture."
 
 4. LENS & CAMERA
-Camera body (invokes color science), focal length, aperture, depth of field character, lens personality (clinical, vintage, anamorphic).
+Focal length, depth of field and its purpose, camera angle and height, lens character (wide distortion, telephoto compression, anamorphic flare).
 
 5. MATERIALS & TEXTURES
 3-5 dominant surfaces. Specific about finish, wear, reflectivity.
@@ -337,11 +342,12 @@ CINEMATIC REALISM — THESE ARE FEATURES, NOT ARTIFACTS:
 PROMPT STRUCTURE (respect positional bias — front-load what matters):
 1. PRIMARY CONCEPT first — the subject/action that IS this frame (strongest token positions)
 2. One supporting element if essential
-3. Environment/atmosphere as spatial context
-4. Cinematic lighting reference (DP name or film reference from brief) + color grade + hex anchors bound to surfaces
-5. Camera body + lens (from brief) — invokes color science and lens character
-6. One organic texture cue (film grain, skin pores, surface wear) — MANDATORY anti-AI measure
-NEVER name lighting equipment (softbox, HMI, key light, fill, bounce). Use DP/film references instead.
+3. Environment/atmosphere as spatial context — describe the physical space, weather, air quality
+4. Light described through EFFECT — how it falls on surfaces, shadow behavior, color temperature as feeling, contrast level
+5. Color grade + hex anchors bound to specific surfaces
+6. Composition — angle, depth of field, what's in focus and why, spatial relationships
+7. One organic texture cue (film grain, skin pores, surface wear) — MANDATORY anti-AI measure
+Write like a storyboard shot description. Describe what the camera SEES and what the atmosphere FEELS like.
 Length: ${profile.optimalLengthMin}-${profile.optimalLengthMax} words per prompt. Every word earns its place.
 
 MANDATORY REPETITION:
@@ -351,7 +357,7 @@ These appear VERBATIM in every prompt:
 - The cinematic lighting reference
 - The lens/camera specification
 
-${CINEMATIC_REFERENCE_VOCABULARY}
+${CINEMATIC_PROMPT_STYLE}
 
 ${NATURALISM_VOCABULARY}
 
@@ -364,13 +370,15 @@ VALIDATION — CHECK EVERY PROMPT:
 - Can you summarize each frame in 5 words? If not, simplify.
 - Is the color grade VERBATIM in every prompt?
 - Are the 3 hex anchors in every prompt, bound to specific surfaces/objects?
-- Same cinematic lighting reference and lens in every prompt?
+- Same lighting quality and lens feel across all prompts?
 - Does the set follow the narrative arc?
 - No prompt outside ${profile.optimalLengthMin}-${profile.optimalLengthMax} words
 - Does EVERY prompt include at least one organic texture cue (grain, pores, wear, imperfection)?
 - Does the prompt front-load the primary subject in the first sentence?
 - Zero forbidden words? Zero "sharp focus", "crisp details", "high quality", "8k"?
-- ZERO lighting equipment names? No softbox, HMI, key light, fill, bounce, reflector, diffusion panel?
+- ZERO equipment names? No softbox, HMI, key light, fill, bounce, reflector?
+- ZERO name-dropping? No cinematographer names, director names, or film titles in the output?
+- Does the prompt read like a storyboard shot description — pure visual storytelling?
 
 OUTPUT: Return ONLY valid JSON:
 {
@@ -527,7 +535,7 @@ export function buildUserMessage(
     lines.push('')
     lines.push(`COLOR GRADE (copy VERBATIM into every prompt): ${creativeBrief.colorGrade}`)
     lines.push(`COLOR ANCHORS (include in every prompt, bound to surfaces): ${creativeBrief.colorAnchors.join(', ')}`)
-    lines.push(`CINEMATIC LIGHTING (use as reference — NEVER name equipment): ${creativeBrief.lighting}`)
+    lines.push(`LIGHTING QUALITY (describe through effect — NEVER name equipment or people): ${creativeBrief.lighting}`)
     lines.push(`LENS & CAMERA: ${creativeBrief.lens}`)
     lines.push(`MATERIALS: ${creativeBrief.materials}`)
     lines.push(`MOOD: ${creativeBrief.mood}`)
@@ -540,8 +548,8 @@ export function buildUserMessage(
     lines.push('1. Each frame has ONE primary concept — make it dominate the prompt.')
     lines.push('2. The color grade sentence must appear WORD FOR WORD in every prompt.')
     lines.push('3. The 3 hex color anchors must appear in every prompt, bound to specific surfaces/objects.')
-    lines.push('4. Same cinematic lighting reference and lens in every prompt.')
-    lines.push('5. NEVER name lighting equipment (softbox, HMI, key light, fill, bounce, reflector).')
+    lines.push('4. Same lighting quality and lens feel in every prompt — describe light through its visible EFFECT.')
+    lines.push('5. NEVER name equipment, cinematographers, directors, or film titles in the output prompt.')
     lines.push('6. Max 2 subjects per frame. Fewer is better. Empty space is powerful.')
     lines.push('7. Follow the narrative arc from first to last shot.')
 
@@ -727,16 +735,16 @@ ${profile.editRules && mode === 'edit' ? profile.editRules + '\n' : ''}YOUR ROLE
 ENHANCEMENT PROCESS:
 1. EXTRACT the core concept — what is this prompt really about? Identify the primary subject, action, environment, mood.
 2. RESTRUCTURE for positional bias — front-load the primary subject in the first sentence.
-3. ADD specificity where the original is vague — replace generic terms with concrete details:
-   - "beautiful lighting" → specific source, direction, quality, color temperature
-   - "cinematic" → specific lens, camera body, film stock
-   - "moody" → specific shadow behavior, color grade, atmospheric detail
+3. ADD specificity where the original is vague — replace generic terms with descriptive details:
+   - "beautiful lighting" → describe how light falls on surfaces, shadow behavior, color temperature as feeling
+   - "cinematic" → describe composition, depth of field purpose, atmosphere, emotional register
+   - "moody" → describe specific shadow behavior, color grade, atmospheric texture
 4. ADD organic texture cues — at least one anti-AI measure (film grain, visible pores, surface wear, analog character)
 5. ADD color anchors — if the prompt implies a palette, lock it with hex codes bound to surfaces
 6. TRIM anything that wastes tokens — remove filler, synonym chains, meta-language ("a photograph of")
 7. VALIDATE word count: ${profile.optimalLengthMin}-${profile.optimalLengthMax} words
 
-${CINEMATIC_REFERENCE_VOCABULARY}
+${CINEMATIC_PROMPT_STYLE}
 
 ${NATURALISM_VOCABULARY}
 
@@ -750,12 +758,13 @@ WHAT TO PRESERVE:
 - The user's creative voice — enhance it, don't replace it
 
 WHAT TO CHANGE:
-- Vague language → specific, technical language
+- Vague language → specific, descriptive language (what the camera sees, how surfaces respond to light)
 - Keyword lists → complete sentences with semantic relationships
-- Missing lighting → motivated, specific lighting setup
-- Missing camera → specific lens, body, and depth of field
-- Missing texture → organic imperfection cues
+- Missing lighting → describe light through its effect on the scene (direction, quality, shadow behavior, color temperature)
+- Missing atmosphere → add sensory details (air quality, surface reflections, environmental texture)
+- Missing texture → organic imperfection cues (grain, pores, wear)
 - Wrong length → compress or expand to ${profile.optimalLengthMin}-${profile.optimalLengthMax} words
+- Name-dropping (cinematographers, directors, film titles) → describe the visual quality instead
 
 OUTPUT: Return ONLY valid JSON: { "prompt": "the enhanced prompt" }`
 }
