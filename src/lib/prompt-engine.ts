@@ -26,11 +26,14 @@ const FORBIDDEN_LANGUAGE = `FORBIDDEN WORDS (these add noise with zero direction
 "mesmerizing", "awe-inspiring", "hauntingly beautiful", "masterpiece", "best quality",
 "8k", "ultra HD", "hyperrealistic" — instead describe specifically what makes the image precise`
 
-const NATURALISM_VOCABULARY = `NATURALISM VOCABULARY (weave into sentences to counter synthetic AI look):
-- Surface: scuffed, patina'd, rain-spotted, sun-faded, dust-settled, fingerprint-smudged
-- Skin: pores visible, uneven tone, slight sheen, natural blemishes, fine lines
-- Environment: asymmetric, slightly cluttered, lived-in, imperfect, worn edges
-- Light: uneven falloff, color cast from environment, accidental spill, motivated shadows`
+const NATURALISM_VOCABULARY = `NATURALISM VOCABULARY — CRITICAL FOR KLEIN (its 1B flow model over-sharpens and smooths by default):
+Every prompt MUST include at least 2 of these organic texture cues to counteract Klein's synthetic tendencies:
+- Skin: "natural skin texture with visible pores", "uneven skin tone", "fine lines around eyes", "subtle sheen on forehead"
+- Surface: "scuffed", "patina'd", "rain-spotted", "sun-faded", "dust-settled", "fingerprint-smudged", "cracked", "peeling"
+- Film/Analog: "film grain", "subtle halation on highlights", "analog color shift", "gentle vignetting", "slight lens imperfection"
+- Environment: "asymmetric composition", "slightly cluttered", "lived-in", "worn edges", "sun-bleached", "water-stained"
+- Light: "uneven falloff", "color cast from environment", "accidental spill", "motivated shadows"
+NEVER USE: "sharp focus", "crisp details", "high quality", "8k", "ultra detailed" — these AMPLIFY the AI look on Klein`
 
 const LENS_VOCABULARY = `LENS AND LIGHTING VOCABULARY (draw from this when composing sentences):
 Lens: 21mm wide, 35mm standard, 50mm natural, 85mm portrait, 135mm compressed, anamorphic 2.39:1, tilt-shift
@@ -39,12 +42,29 @@ Light: overcast diffuse, tungsten practical, sodium vapour, golden hour side-rak
        single-source top-light, dappled canopy light, mercury vapour blue-green, neon spill, backlit rim separation
 Grade: bleach bypass, cross-processed, lifted blacks, crushed shadows, split-toned highlights, analog halation`
 
-const QWEN_ENCODER_RULES = `TEXT ENCODER NOTES (Flux 2 Klein and Z-Image both use Qwen — an LLM-based text encoder):
-- Write in COMPLETE SENTENCES, not comma-separated keyword tags. Qwen processes natural language; sentence structure encodes semantic relationships that keyword lists cannot.
-- ORDER: subject → environment → lighting → mood → camera. Qwen is autoregressive — details mentioned later are deprioritized, so lead with what matters most.
-- Describe RELATIONSHIPS between elements, not just elements ("warm side light raking across the fabric's texture" beats "fabric, warm light").
-- Mood and emotional register translate well — Qwen understands contextual and narrative language ("quiet tension of a conversation just ended" implies a lighting and spatial arrangement).
-- Avoid repeating the same concept in multiple ways in one prompt — say it once, precisely.`
+const QWEN_ENCODER_RULES = `FLUX 2 KLEIN 9B — TEXT ENCODER ARCHITECTURE (Qwen3-8B-FP8, decoder-only LLM):
+Features extracted from Qwen3 layers [9, 18, 27] → 12,288-dim context vector. 4-step distilled inference, CFG locked at 1.0.
+
+CRITICAL: ~77 ACTIVE TOKENS. Positions 77-511 are padding with near-zero variance.
+This means ~50-100 words is the effective prompt window. EVERY WORD MUST EARN ITS PLACE.
+
+NO PROMPT UPSAMPLING. Unlike Flux 2 Dev (Mistral-based with built-in upsampling), Klein encodes EXACTLY what you write. Nothing is added, nothing is expanded. Be precise and intentional.
+
+POSITIONAL BIAS (from Qwen3 causal attention):
+- First 25% of active tokens (positions 1-19): STRONGEST influence → place primary subject here
+- Middle 50% (positions 20-58): MODERATE influence → environment, details, lighting
+- Last 25% (positions 59-77): WEAKEST influence → style, camera, grade
+FRONT-LOAD the primary concept. What you say first dominates the output.
+
+PROMPT WRITING RULES:
+- Write COMPLETE SENTENCES, not comma-separated keywords. Qwen encodes semantic relationships through sentence structure.
+- Describe RELATIONSHIPS between elements: "warm side light raking across the fabric's texture" beats "fabric, warm light"
+- Mood and emotional register translate well — Qwen understands narrative language
+- Say each concept ONCE, precisely. No synonym chains. No redundant modifiers.
+- Camera bodies invoke their color science: "Shot on Canon EOS R5", "Shot on Hasselblad X2D"
+- Film stocks are understood: "Kodak Portra 400", "Fuji Velvia", "Expired Ektachrome 64"
+- Hex codes bound to objects: "the wall is #2C3E50" — Klein follows hex values extremely well
+- NO negative prompts (distilled model). NO prompt weights. NO meta-language ("a photograph of").`
 
 // ---------------------------------------------------------------------------
 // CREATIVE BRIEF — locked production document derived from vision + user input
@@ -182,13 +202,37 @@ export function buildBriefUserMessage(
   imageLabels?: ImageLabel[]
 ): string {
   const lines: string[] = []
+  const hasText = userInputs.description?.trim()
+  const hasImages = !!visualStyleCues
 
   lines.push(`MODE: ${mode === 'generate' ? 'Image Generation' : mode === 'edit' ? 'Image Editing' : 'Video Generation'}`)
   lines.push(`FRAMES REQUESTED: ${promptCount}`)
   lines.push(`Assign exactly ${promptCount} primary concepts — one per frame.`)
 
-  if (visualStyleCues) {
-    lines.push('\n=== VISUAL ANALYSIS (from reference images) ===')
+  // --- INPUT WEIGHTING GUIDE ---
+  // Text and images serve different roles. Make this explicit so the brief model
+  // doesn't over-index on one source.
+  if (hasText && hasImages) {
+    lines.push('\n=== INPUT WEIGHTING ===')
+    lines.push('TEXT provides the CONCEPT and INTENT — what the frames are about, the narrative, the subject matter.')
+    lines.push('REFERENCE IMAGES provide the VISUAL VOCABULARY — palette, texture, lighting quality, mood, material language.')
+    lines.push('Use text for WHAT. Use images for HOW IT LOOKS. When they conflict, text intent wins but image aesthetics inform execution.')
+  } else if (hasImages && !hasText) {
+    lines.push('\n=== INPUT WEIGHTING ===')
+    lines.push('No text direction provided. Derive ALL concepts and creative direction from the visual analysis.')
+    lines.push('The reference images define both the CONCEPT and the VISUAL VOCABULARY.')
+  } else if (hasText && !hasImages) {
+    lines.push('\n=== INPUT WEIGHTING ===')
+    lines.push('No reference images provided. Derive the visual vocabulary entirely from the text description.')
+    lines.push('Make strong, specific aesthetic choices — do not default to generic studio lighting or neutral palettes.')
+  }
+
+  // --- Reference images: visual vocabulary ---
+  if (hasImages) {
+    lines.push('\n=== VISUAL VOCABULARY (from reference images) ===')
+    lines.push('Extract the visual LANGUAGE from these images — palette, light quality, texture, composition style.')
+    lines.push('Do NOT extract narrative concepts from images unless no text direction is provided.')
+    lines.push('')
     lines.push(visualStyleCues.description)
     lines.push(`\nExtracted Palette: ${visualStyleCues.hexPalette.join(', ')}`)
     if (visualStyleCues.cinematicKeywords?.length > 0) {
@@ -203,11 +247,12 @@ export function buildBriefUserMessage(
     }
   }
 
+  // --- Text direction: concept and intent ---
   lines.push('\n=== CREATIVE DIRECTION (from user) ===')
-  if (userInputs.description.trim()) {
+  if (hasText) {
     lines.push(userInputs.description)
-  } else if (visualStyleCues) {
-    lines.push('(No text description — derive all creative direction from the visual analysis above.)')
+  } else if (hasImages) {
+    lines.push('(No text description — derive concepts from the visual analysis above.)')
   } else {
     lines.push('(No inputs provided — create a compelling cinematic brief based on your best creative judgment.)')
   }
@@ -251,13 +296,14 @@ CINEMATIC REALISM — THESE ARE FEATURES, NOT ARTIFACTS:
 - Asymmetry, imperfect framing, environmental wear — these are marks of reality
 - Perfect uniformity (even lighting, symmetrical composition, flawless surfaces) reads as AI-generated
 
-PROMPT STRUCTURE:
-1. Lead with the primary concept — what is THIS frame about
-2. One supporting element if needed
-3. Environment/atmosphere as context
-4. Color grade and lighting (verbatim from brief)
-5. Lens (verbatim from brief)
-Length: ${profile.optimalLengthMin}-${profile.optimalLengthMax} words per prompt.
+PROMPT STRUCTURE (respect positional bias — front-load what matters):
+1. PRIMARY CONCEPT first — the subject/action that IS this frame (strongest token positions)
+2. One supporting element if essential
+3. Environment/atmosphere as spatial context
+4. Lighting and color grade (verbatim from brief) — include hex anchors bound to surfaces
+5. Lens and camera body (verbatim from brief) — invokes color science
+6. One organic texture cue (film grain, skin pores, surface wear) — MANDATORY anti-AI measure
+Length: ${profile.optimalLengthMin}-${profile.optimalLengthMax} words per prompt. Every word earns its place.
 
 MANDATORY REPETITION:
 These appear VERBATIM in every prompt:
@@ -272,14 +318,17 @@ ${QWEN_ENCODER_RULES}
 
 ${FORBIDDEN_LANGUAGE}
 
-VALIDATION:
+VALIDATION — CHECK EVERY PROMPT:
 - Does each prompt have exactly ONE clear primary concept? If a prompt tries to say two things, cut one.
 - Can you summarize each frame in 5 words? If not, simplify.
 - Is the color grade VERBATIM in every prompt?
-- Are the 3 hex anchors in every prompt?
+- Are the 3 hex anchors in every prompt, bound to specific surfaces/objects?
 - Same lighting, same lens in every prompt?
 - Does the set follow the narrative arc?
 - No prompt outside ${profile.optimalLengthMin}-${profile.optimalLengthMax} words
+- Does EVERY prompt include at least one organic texture cue (grain, pores, wear, imperfection)?
+- Does the prompt front-load the primary subject in the first sentence?
+- Zero forbidden words? Zero "sharp focus", "crisp details", "high quality", "8k"?
 
 OUTPUT: Return ONLY valid JSON:
 {

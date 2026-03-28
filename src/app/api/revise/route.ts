@@ -46,7 +46,7 @@ export async function POST(request: NextRequest) {
   try {
     const body: ReviseRequest = await request.json()
     const { prompt, label, revisionNote, fixCategory, history, userInputs, visualStyleCues, targetModel: rawTargetModel, mode: rawMode } = body
-    const targetModel: TargetModel = rawTargetModel ?? 'flux-2-pro'
+    const targetModel: TargetModel = rawTargetModel ?? 'flux-2-klein-9b'
     const mode: GenerationMode = rawMode ?? 'generate'
 
     if (!prompt?.trim()) {

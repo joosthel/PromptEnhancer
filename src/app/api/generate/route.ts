@@ -38,7 +38,7 @@ export async function POST(request: NextRequest) {
   try {
     const body: GenerateRequest = await request.json()
     const { images, userInputs, promptCount, targetModel: rawTargetModel, mode: rawMode, imageLabels } = body
-    const targetModel: TargetModel = rawTargetModel ?? 'flux-2-pro'
+    const targetModel: TargetModel = rawTargetModel ?? 'flux-2-klein-9b'
     const mode: GenerationMode = rawMode ?? 'generate'
 
     const hasImages = Array.isArray(images) && images.length > 0

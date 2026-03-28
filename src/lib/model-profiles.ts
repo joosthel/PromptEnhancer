@@ -21,8 +21,6 @@ export const GENERATION_MODES: Array<{ id: GenerationMode; label: string }> = [
 // ---------------------------------------------------------------------------
 
 export type TargetModel =
-  | 'flux-2-pro'
-  | 'z-image'
   | 'nanobanana-2'
   | 'flux-2-klein-9b'
   | 'veo-3-1'
@@ -45,51 +43,6 @@ export interface ModelProfile {
 }
 
 export const MODEL_PROFILES: Record<TargetModel, ModelProfile> = {
-  'flux-2-pro': {
-    id: 'flux-2-pro',
-    label: 'Flux 2 Pro',
-    modes: ['generate'],
-    promptFormat: 'natural',
-    optimalLengthMin: 40,
-    optimalLengthMax: 80,
-    supportsNegativePrompts: false,
-    maxReferenceImages: 9,
-    knownWeaknesses: ['hands', 'text-rendering'],
-    promptRules: `FLUX 2 [PRO] — TEXT ENCODER: Mistral-Small-3.2-24B (24B decoder-only VLM)
-Features extracted from layers [10, 20, 30] → 15,360-dim → projected to 6,144. Token limit: 512. BFL-recommended optimal: 40-80 words.
-
-ENCODER-SPECIFIC RULES (from BFL official docs and arXiv:2507.09595):
-- WORD ORDER IS CRITICAL: BFL explicitly documents positional bias — "FLUX.2 pays more attention to what comes first." Order strictly: Main subject → Key action → Critical style → Essential context → Secondary detail. Never bury the lead.
-- Natural language sentences only. No comma-separated keyword tags — Mistral was trained on natural language and encodes sentence relationships, not keyword frequency.
-- No negative prompts (not supported architecturally).
-- No meta-language: never write "a photograph of", "an image of", "cinematic shot of" — describe the scene directly.
-- Hex codes for color: BFL specifically recommends "#FF5733" style notation over vague color names — Mistral's world knowledge encodes color science precisely.
-- Lighting: use technique names, not adjectives. "Single-source HMI through 4×4 light grid" beats "dramatic lighting." Mistral knows what these setups look like.
-- 40-80 words optimal. Longer prompts (up to 150 words) for complex multi-element scenes. Beyond 150: diminishing returns and attention dilution.`,
-  },
-  'z-image': {
-    id: 'z-image',
-    label: 'Z-Image',
-    modes: ['generate'],
-    promptFormat: 'structured',
-    optimalLengthMin: 100,
-    optimalLengthMax: 300,
-    supportsNegativePrompts: false,
-    maxReferenceImages: 0,
-    knownWeaknesses: ['hands', 'contradictory-styles'],
-    promptRules: `Z-IMAGE — TEXT ENCODER: Qwen3-4B (decoder-only LLM, bilingual Chinese/English)
-Architecture: S3-DiT — text tokens, visual semantic tokens, and image tokens are CONCATENATED into a single unified sequence. 3D RoPE: text tokens occupy the temporal dimension; image tokens occupy spatial dimensions. Source: arXiv:2511.22699 (ByteDance/Tongyi MAI).
-
-ENCODER-SPECIFIC RULES (from arXiv:2511.22699 and Qwen3 architecture):
-- Natural language sentences, NOT keyword tags. However, Z-Image's training regime included "long, medium and short captions, as well as tags and simulated user prompts" (paper Section 3.2) — making it more tolerant of both styles than other LLM-encoder models.
-- Positional bias applies (decoder-only causal attention): put the most critical visual concepts in the first sentence. Text at the end of a long prompt competes with fewer attended tokens.
-- The single-stream architecture means text and image tokens share the same attention budget. Keep prompts dense but focused — verbose prompts have diminishing returns as image tokens dominate the sequence.
-- Bilingual: Chinese-language prompts are natively supported with full fidelity (Qwen3-4B is bilingual by design).
-- 100-300 words optimal. Short (25-50 words) for quick iteration; 150-300 for detailed production prompts.
-- NO negative prompts — encode constraints positively.
-- COLOR ANCHORING CRITICAL: Single-stream attention means color language must be explicit and identical across all prompts. One color grade phrase + 2-3 hex codes repeated verbatim. Any paraphrase diverges the output.
-- Brand/designer references: Qwen3-4B has broad world knowledge and may recognize some fashion references — but translate to visual properties regardless for maximum reliability.`,
-  },
   'nanobanana-2': {
     id: 'nanobanana-2',
     label: 'NanoBanana 2',
@@ -120,29 +73,57 @@ ENCODER-SPECIFIC RULES (from arXiv:2511.22699 and Qwen3 architecture):
   'flux-2-klein-9b': {
     id: 'flux-2-klein-9b',
     label: 'Flux 2 Klein 9B',
-    modes: ['edit'],
+    modes: ['generate', 'edit'],
     promptFormat: 'natural',
-    optimalLengthMin: 40,
+    optimalLengthMin: 50,
     optimalLengthMax: 100,
     supportsNegativePrompts: false,
     maxReferenceImages: 4,
-    knownWeaknesses: ['fine-detail-at-speed'],
-    promptRules: `FLUX 2 KLEIN 9B — TEXT ENCODER: Qwen3-8B-FP8 (decoder-only, text-only LLM)
-Features extracted from layers [9, 18, 27] → 12,288-dim context. Token limit: 512. "9B" = combined system (~1B flow model + 8B text encoder). Source: FLUX.2-klein-9B HF model card; DeepWiki code analysis.
+    knownWeaknesses: ['over-sharpening', 'plastic-skin', 'multi-constraint-instability', 'missing-organic-texture'],
+    promptRules: `FLUX 2 KLEIN 9B — TEXT ENCODER: Qwen3-8B-FP8 (decoder-only LLM, text-only)
+Architecture: ~1B flow DiT (8 double-stream + 24 single-stream blocks) + 8B text encoder. Features extracted from Qwen3 layers [9, 18, 27] → 12,288-dim context. 4-step distilled inference, CFG locked at 1.0.
 
-ENCODER-SPECIFIC RULES:
-- Natural language sentences — Qwen3-8B is instruction-tuned and processes coherent language far better than keyword lists (thinking mode disabled: enable_thinking=False in FLUX.2's implementation).
-- Positional bias: front-load the most critical visual concepts. Qwen3's causal attention means early tokens receive more cross-attention from later tokens — what you say first has more influence.
-- Text-only encoder: no multimodal capability, no prompt upsampling, no content filtering. What you write is what gets encoded.
-- No negative prompts (not supported).
-- Hex codes for color specificity — Qwen3 has strong color science vocabulary from its LLM training corpus.
-- 40-100 words optimal for editing tasks (focused, single-intent). The 4-step distilled inference favors concise, high-signal prompts.`,
+CRITICAL: ~77 ACTIVE TOKENS. Positions 77-511 are padding with near-zero variance. This means the effective prompt is ~50-100 words. Every word must earn its place.
+
+NO PROMPT UPSAMPLING. Unlike Flux 2 Dev (Mistral-3.2-24B with built-in upsampling), Klein encodes EXACTLY what you write. Nothing is added, nothing is expanded. Be descriptive and precise.
+
+POSITIONAL BIAS (from Qwen3 causal attention):
+- First 25% of active tokens (subject/primary concept): STRONGEST influence
+- Middle 50% (environment, details): MODERATE influence
+- Last 25% (style, camera, grade): WEAKEST influence
+Front-load the most important visual concept. What you say first dominates the output.
+
+PROMPT STRUCTURE for T2I:
+1. Primary subject — specific, concrete, active (strongest tokens)
+2. Environment and spatial context
+3. Lighting — source type, quality, direction, surface interaction (SINGLE GREATEST IMPACT on quality)
+4. Mood/atmosphere — one phrase
+5. Camera — "Shot on [body], [focal length] at [aperture]"
+6. Color grade + hex anchors
+
+WHAT WORKS WELL:
+- Camera bodies invoke their color science: "Shot on Canon EOS R5", "Shot on Hasselblad X2D", "Shot on Fujifilm X-T5, 35mm f/1.4"
+- Film stocks are understood: "Kodak Portra 400", "Fuji Velvia", "Expired Ektachrome 64", "35mm film grain"
+- Hex color codes bound to objects: "the wall is #2C3E50" — Klein follows hex values extremely well
+- Lighting specifics: source, direction, quality, surface interaction — not generic adjectives
+- Material textures: "brushed aluminum", "raw silk", "cracked leather", "rain-spotted concrete"
+
+KNOWN WEAKNESS — THE AI LOOK (mitigate in EVERY prompt):
+Klein's 1B flow model tends toward over-sharpening, plastic skin, and unnaturally tidy backgrounds. ALWAYS counteract:
+- Add organic texture: "natural skin texture with visible pores", "film grain", "subtle lens imperfection"
+- Add environmental wear: "scuffed surfaces", "dust-settled", "sun-faded", "asymmetric composition"
+- Add analog character: "slight halation on highlights", "analog color shift", "gentle vignetting"
+- Avoid: "sharp focus", "crisp details", "high quality", "8k" — these amplify the synthetic look
+
+NO negative prompts (distilled model). NO prompt weights. NO meta-language ("a photograph of").
+50-100 words optimal for T2I. 40-80 for editing. Every word must contribute.`,
     editRules: `FLUX 2 KLEIN 9B EDIT RULES:
 - Prompt-driven editing — no masks needed, up to 4 reference images
-- Describe the desired RESULT, not the operation: what should the final image look like, not "change X to Y"
-- Single intent per prompt yields cleanest edits — this is a 4-step model optimized for speed over complexity
-- For color changes: use hex codes directly in a natural sentence ("the background shifts to a deep slate #2C3E50")
-- Strength of edit is controlled by inference parameters, not prompt verbosity — keep the prompt tight`,
+- Describe the desired RESULT, not the operation
+- Single intent per prompt — the 4-step distilled inference favors focused prompts
+- Hex codes for color: "the background shifts to a deep slate #2C3E50"
+- 40-80 words optimal for edits — shorter and more targeted than generation prompts
+- Include anti-AI cues even in edit prompts: "natural texture", "organic feel", "visible grain"`,
   },
   'veo-3-1': {
     id: 'veo-3-1',
@@ -218,14 +199,14 @@ export function getModelsForMode(mode: GenerationMode): ModelProfile[] {
 
 export function getDefaultModelForMode(mode: GenerationMode): TargetModel {
   switch (mode) {
-    case 'generate': return 'flux-2-pro'
+    case 'generate': return 'flux-2-klein-9b'
     case 'edit': return 'nanobanana-2'
     case 'video': return 'veo-3-1'
   }
 }
 
 export const DEFAULT_MODE: GenerationMode = 'generate'
-export const DEFAULT_MODEL: TargetModel = 'flux-2-pro'
+export const DEFAULT_MODEL: TargetModel = 'flux-2-klein-9b'
 
 // ---------------------------------------------------------------------------
 // Fix Categories
