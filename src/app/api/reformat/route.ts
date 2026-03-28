@@ -65,7 +65,7 @@ export async function POST(request: NextRequest) {
     const userMessage = buildReformatUserMessage(prompt, label)
 
     const reformatResponse = await callOpenRouter({
-      model: 'minimax/minimax-m2.5',
+      model: 'deepseek/deepseek-v3.2',
       apiKey,
       responseFormat: 'json_object',
       messages: [

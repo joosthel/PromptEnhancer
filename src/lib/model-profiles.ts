@@ -81,42 +81,44 @@ export const MODEL_PROFILES: Record<TargetModel, ModelProfile> = {
     maxReferenceImages: 4,
     knownWeaknesses: ['over-sharpening', 'plastic-skin', 'multi-constraint-instability', 'missing-organic-texture'],
     promptRules: `FLUX 2 KLEIN 9B — TEXT ENCODER: Qwen3-8B-FP8 (decoder-only LLM, text-only)
-Architecture: ~1B flow DiT (8 double-stream + 24 single-stream blocks) + 8B text encoder. Features extracted from Qwen3 layers [9, 18, 27] → 12,288-dim context. 4-step distilled inference, CFG locked at 1.0.
+Architecture: ~1B flow DiT + 8B text encoder. Features from Qwen3 layers [9,18,27] → 12,288-dim context. 4-step distilled, CFG=1.0.
 
-CRITICAL: ~77 ACTIVE TOKENS. Positions 77-511 are padding with near-zero variance. This means the effective prompt is ~50-100 words. Every word must earn its place.
+CRITICAL: ~77 ACTIVE TOKENS (~50-100 words). Every word must earn its place. No upsampling — Klein encodes EXACTLY what you write.
 
-NO PROMPT UPSAMPLING. Unlike Flux 2 Dev (Mistral-3.2-24B with built-in upsampling), Klein encodes EXACTLY what you write. Nothing is added, nothing is expanded. Be descriptive and precise.
+POSITIONAL BIAS (Qwen3 causal attention):
+- First 25%: STRONGEST → primary subject here
+- Middle 50%: MODERATE → environment, atmosphere, lighting quality
+- Last 25%: WEAKEST → camera, grade, texture cues
+Front-load the primary concept. What you say first dominates.
 
-POSITIONAL BIAS (from Qwen3 causal attention):
-- First 25% of active tokens (subject/primary concept): STRONGEST influence
-- Middle 50% (environment, details): MODERATE influence
-- Last 25% (style, camera, grade): WEAKEST influence
-Front-load the most important visual concept. What you say first dominates the output.
-
-PROMPT STRUCTURE for T2I:
-1. Primary subject — specific, concrete, active (strongest tokens)
-2. Environment and spatial context
-3. Lighting — source type, quality, direction, surface interaction (SINGLE GREATEST IMPACT on quality)
-4. Mood/atmosphere — one phrase
-5. Camera — "Shot on [body], [focal length] at [aperture]"
-6. Color grade + hex anchors
+CINEMATIC LIGHTING — THE MOST IMPORTANT RULE:
+NEVER name lighting equipment (softbox, HMI, key light, fill, bounce, reflector, diffusion panel).
+Klein renders equipment names as OBJECTS IN THE SCENE. You will get softboxes and light rigs visible in the image.
+Instead, use CINEMATOGRAPHER and FILM REFERENCES to invoke lighting quality:
+- "Roger Deakins lighting" → precise single-source, deep motivated shadows, naturalistic color
+- "Greig Fraser cinematography" → desaturated haze, silhouettes against scale, amber-teal tension
+- "Emmanuel Lubezki natural light" → magic hour, available light, God-rays
+- "lit like Blade Runner 2049" → warm amber pooling in cold blue void, fog diffusion
+- "lit like The Godfather" → faces emerging from deep shadow, warm overhead practical light
+- "Bradford Young underexposed richness" → shadow detail that breathes, dark skin luminosity
+Describe how light FALLS and FEELS, not what creates it: "warm spill from the next room", "cold window light cutting across", "single shaft of light from above"
 
 WHAT WORKS WELL:
-- Camera bodies invoke their color science: "Shot on Canon EOS R5", "Shot on Hasselblad X2D", "Shot on Fujifilm X-T5, 35mm f/1.4"
-- Film stocks are understood: "Kodak Portra 400", "Fuji Velvia", "Expired Ektachrome 64", "35mm film grain"
-- Hex color codes bound to objects: "the wall is #2C3E50" — Klein follows hex values extremely well
-- Lighting specifics: source, direction, quality, surface interaction — not generic adjectives
+- Camera bodies invoke color science: "Shot on Canon EOS R5", "Shot on Hasselblad X2D", "Shot on ARRI Alexa Mini"
+- Film stocks: "Kodak Portra 400", "Fuji Velvia", "Expired Ektachrome 64", "35mm film grain"
+- Hex codes bound to surfaces: "the wall is #2C3E50" — Klein follows hex values extremely well
 - Material textures: "brushed aluminum", "raw silk", "cracked leather", "rain-spotted concrete"
+- Cinematographer names as lighting shorthand — invokes their entire visual language
 
-KNOWN WEAKNESS — THE AI LOOK (mitigate in EVERY prompt):
-Klein's 1B flow model tends toward over-sharpening, plastic skin, and unnaturally tidy backgrounds. ALWAYS counteract:
-- Add organic texture: "natural skin texture with visible pores", "film grain", "subtle lens imperfection"
-- Add environmental wear: "scuffed surfaces", "dust-settled", "sun-faded", "asymmetric composition"
-- Add analog character: "slight halation on highlights", "analog color shift", "gentle vignetting"
-- Avoid: "sharp focus", "crisp details", "high quality", "8k" — these amplify the synthetic look
+ANTI-AI MEASURES (include in EVERY prompt):
+Klein's 1B flow model over-sharpens and smooths. Counteract with:
+- Organic texture: "visible pores", "film grain", "subtle halation on highlights"
+- Environmental wear: "scuffed surfaces", "dust-settled", "sun-faded", "asymmetric composition"
+- Analog character: "analog color shift", "gentle vignetting", "slight lens imperfection"
+- AVOID: "sharp focus", "crisp details", "high quality", "8k" — amplify synthetic look
 
-NO negative prompts (distilled model). NO prompt weights. NO meta-language ("a photograph of").
-50-100 words optimal for T2I. 40-80 for editing. Every word must contribute.`,
+NO negative prompts. NO prompt weights. NO meta-language ("a photograph of").
+50-100 words for T2I. 40-80 for editing.`,
     editRules: `FLUX 2 KLEIN 9B EDIT RULES:
 - Prompt-driven editing — no masks needed, up to 4 reference images
 - Describe the desired RESULT, not the operation

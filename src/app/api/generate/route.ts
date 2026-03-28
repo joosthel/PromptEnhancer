@@ -103,7 +103,7 @@ export async function POST(request: NextRequest) {
       const briefUserMessage = buildBriefUserMessage(userInputs, mode, promptCount, visualStyleCues, imageLabels)
 
       const briefResponse = await callOpenRouter({
-        model: 'minimax/minimax-m2.5',
+        model: 'deepseek/deepseek-v3.2',
         apiKey,
         responseFormat: 'json_object',
         messages: [
@@ -128,7 +128,7 @@ export async function POST(request: NextRequest) {
     )
 
     const promptResponse = await callOpenRouter({
-      model: 'minimax/minimax-m2.5',
+      model: 'deepseek/deepseek-v3.2',
       apiKey,
       responseFormat: 'json_object',
       messages: [
