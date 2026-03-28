@@ -665,6 +665,86 @@ export function buildRevisionUserMessage(
 }
 
 // ---------------------------------------------------------------------------
+// Enhance — take a raw prompt and optimize it for the target model
+// ---------------------------------------------------------------------------
+
+export function buildEnhanceSystemPrompt(targetModel: TargetModel, mode: GenerationMode): string {
+  const profile = MODEL_PROFILES[targetModel]
+  const modeLabel = mode === 'edit' ? 'editing' : mode === 'video' ? 'video generation' : 'image generation'
+
+  return `You are a senior prompt engineer. You receive a raw, unoptimized ${modeLabel} prompt and you rewrite it into a production-quality prompt precisely optimized for ${profile.label}.
+
+TARGET MODEL: ${profile.label}
+${profile.promptRules}
+
+${profile.editRules && mode === 'edit' ? profile.editRules + '\n' : ''}YOUR ROLE:
+- The user's prompt contains the INTENT. Your job is to preserve that intent while restructuring, expanding, and refining for the target model.
+- You are NOT generating a new concept. You are ENHANCING an existing one.
+
+ENHANCEMENT PROCESS:
+1. EXTRACT the core concept — what is this prompt really about? Identify the primary subject, action, environment, mood.
+2. RESTRUCTURE for positional bias — front-load the primary subject in the first sentence.
+3. ADD specificity where the original is vague — replace generic terms with concrete details:
+   - "beautiful lighting" → specific source, direction, quality, color temperature
+   - "cinematic" → specific lens, camera body, film stock
+   - "moody" → specific shadow behavior, color grade, atmospheric detail
+4. ADD organic texture cues — at least one anti-AI measure (film grain, visible pores, surface wear, analog character)
+5. ADD color anchors — if the prompt implies a palette, lock it with hex codes bound to surfaces
+6. TRIM anything that wastes tokens — remove filler, synonym chains, meta-language ("a photograph of")
+7. VALIDATE word count: ${profile.optimalLengthMin}-${profile.optimalLengthMax} words
+
+${NATURALISM_VOCABULARY}
+
+${QWEN_ENCODER_RULES}
+
+${FORBIDDEN_LANGUAGE}
+
+WHAT TO PRESERVE:
+- The subject, scene, and emotional register
+- Any specific details the user clearly intended (poses, objects, spatial relationships)
+- The user's creative voice — enhance it, don't replace it
+
+WHAT TO CHANGE:
+- Vague language → specific, technical language
+- Keyword lists → complete sentences with semantic relationships
+- Missing lighting → motivated, specific lighting setup
+- Missing camera → specific lens, body, and depth of field
+- Missing texture → organic imperfection cues
+- Wrong length → compress or expand to ${profile.optimalLengthMin}-${profile.optimalLengthMax} words
+
+OUTPUT: Return ONLY valid JSON: { "prompt": "the enhanced prompt" }`
+}
+
+export function buildEnhanceUserMessage(
+  rawPrompt: string,
+  targetModel: TargetModel,
+  mode: GenerationMode,
+  visualStyleCues?: VisualStyleCues
+): string {
+  const profile = MODEL_PROFILES[targetModel]
+  const lines: string[] = []
+
+  lines.push('=== RAW PROMPT TO ENHANCE ===')
+  lines.push(rawPrompt)
+  lines.push('')
+  lines.push(`Target: ${profile.label} (${mode} mode)`)
+  lines.push(`Optimal length: ${profile.optimalLengthMin}-${profile.optimalLengthMax} words`)
+
+  if (visualStyleCues) {
+    lines.push('\n=== VISUAL REFERENCE (from uploaded images — use as style guide) ===')
+    lines.push(visualStyleCues.description)
+    lines.push(`Palette: ${visualStyleCues.hexPalette.join(', ')}`)
+    if (visualStyleCues.cinematicKeywords?.length > 0) {
+      lines.push(`Keywords: ${visualStyleCues.cinematicKeywords.join(' | ')}`)
+    }
+  }
+
+  lines.push('\nEnhance this prompt for the target model. Preserve the intent. Add specificity, structure, and organic texture.')
+
+  return lines.join('\n')
+}
+
+// ---------------------------------------------------------------------------
 // Reformat — rewrite a prompt for a different model
 // ---------------------------------------------------------------------------
 

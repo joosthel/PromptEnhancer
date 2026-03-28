@@ -32,10 +32,73 @@ export default function Home() {
   const [error, setError] = useState<string | null>(null)
   const [activeMode, setActiveMode] = useState<GenerationMode>(DEFAULT_MODE)
   const [activeModel, setActiveModel] = useState<TargetModel>(DEFAULT_MODEL)
+  const [enhanceMode, setEnhanceMode] = useState(false)
 
   function handleModeChange(mode: GenerationMode) {
     setActiveMode(mode)
     setActiveModel(getDefaultModelForMode(mode))
+    setEnhanceMode(false)
+  }
+
+  function handleEnhanceModeChange(enhance: boolean) {
+    setEnhanceMode(enhance)
+  }
+
+  async function handleEnhance() {
+    if (!userInputs.description.trim()) {
+      setError('Paste a prompt to enhance.')
+      return
+    }
+
+    setError(null)
+    setResult(null)
+
+    const hasImages = images.length > 0
+    setLoadingPhase(hasImages ? 'analyzing' : 'generating')
+
+    let genTimer: ReturnType<typeof setTimeout> | null = null
+    if (hasImages) {
+      genTimer = setTimeout(() => setLoadingPhase('generating'), 7000)
+    }
+
+    try {
+      const serializedImages = hasImages
+        ? images.map((img) => {
+            if (img.type === 'base64') {
+              return { type: 'base64' as const, data: img.data, mimeType: img.mimeType }
+            }
+            return { type: 'url' as const, url: img.url }
+          })
+        : undefined
+
+      const response = await fetch('/api/enhance', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          prompt: userInputs.description,
+          images: serializedImages,
+          targetModel: activeModel,
+          mode: activeMode,
+        }),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error ?? `Request failed with status ${response.status}`)
+      }
+
+      setResult({
+        prompts: [{ label: 'Enhanced', prompt: data.prompt }],
+        visualStyleCues: data.visualStyleCues,
+      })
+      setLoadingPhase('done')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'An unexpected error occurred')
+      setLoadingPhase('idle')
+    } finally {
+      if (genTimer) clearTimeout(genTimer)
+    }
   }
 
   async function handleGenerate() {
@@ -125,7 +188,8 @@ export default function Home() {
           ? 'Deriving prompts\u2026'
           : ''
 
-  const generateLabel = activeMode === 'edit' ? 'Generate Edit Prompts'
+  const generateLabel = enhanceMode ? 'Enhance Prompt'
+    : activeMode === 'edit' ? 'Generate Edit Prompts'
     : activeMode === 'video' ? 'Generate Video Prompts'
     : 'Generate Prompts'
 
@@ -156,9 +220,11 @@ export default function Home() {
             values={userInputs}
             promptCount={promptCount}
             activeMode={activeMode}
+            enhanceMode={enhanceMode}
             onChange={setUserInputs}
             onPromptCountChange={setPromptCount}
             onModeChange={handleModeChange}
+            onEnhanceModeChange={handleEnhanceModeChange}
           />
 
           {error && (
@@ -168,7 +234,7 @@ export default function Home() {
           )}
 
           <button
-            onClick={handleGenerate}
+            onClick={enhanceMode ? handleEnhance : handleGenerate}
             disabled={isLoading}
             className="w-full py-3 bg-neutral-900 text-white text-sm rounded-sm hover:bg-neutral-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
