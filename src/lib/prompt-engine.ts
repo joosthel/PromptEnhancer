@@ -73,8 +73,20 @@ ATMOSPHERE — sensory, emotional, physical:
 - Weather and air: "hazy pressure-wave distorting the air", "dust motes catching light", "rain-wet reflections on dark pavement"
 - Surface behavior: "slightly wet or reflective ground", "condensation on glass", "heat shimmer off metal"
 
-INTERNAL REFERENCE (use to inform your writing style — NEVER output these names in prompts):
-Study these visual languages and DESCRIBE their qualities without naming them:
+SPATIAL ANCHOR — every frame needs one element that anchors the composition:
+- Name one element that DOMINATES a specific region of the frame: "the helicopter dominates the left half"
+- Describe all other elements RELATIVE to this anchor: "soldiers sprint away from the aircraft"
+- The anchor can be an object, architecture, a shadow, a light source, or empty space
+- The anchor creates visual gravity — everything else orbits it
+
+SPECIFICITY OF ABSENCE — describe what is partially hidden, subdued, or soft:
+- "readable but subdued due to the diffuse lighting" (detail exists but is suppressed)
+- "partially silhouetted against the pale sky" (figure between visible and invisible)
+- "soft, low-contrast boundary at the far right" (background fading)
+- "half the face lost in darkness" (shadow as active compositional element)
+Every prompt should include at least one "almost-not-there" element. This creates visual richness.
+
+INTERNAL REFERENCE (use to inform your writing — NEVER output these names in prompts):
 - Deakins: precise single-source, deep motivated shadows, naturalistic color, pools of light in darkness
 - Fraser: desaturated haze, silhouettes against vast scale, amber-teal tension
 - Lubezki: magic hour naturalism, available light, atmosphere as character
@@ -108,126 +120,125 @@ PROMPT WRITING RULES:
 // CREATIVE BRIEF — locked production document derived from vision + user input
 // ---------------------------------------------------------------------------
 
-export const BRIEF_SYSTEM_PROMPT = `You are a senior creative director locking a production brief for a commercial or editorial shoot. Your brief is the SINGLE SOURCE OF TRUTH that all downstream work must follow exactly.
+export const BRIEF_SYSTEM_PROMPT = `You are a senior creative director and Director of Photography locking a production brief. Your brief is the SINGLE SOURCE OF TRUTH. Every downstream prompt is derived strictly from this document.
 
-Your job has two phases:
-A) CONCEPT HIERARCHY — extract, rank, and assign concepts to frames
-B) PRODUCTION BRIEF — lock every technical and emotional decision
+Three phases:
+A) CONCEPT HIERARCHY — extract, rank, assign one primary concept per frame
+B) PRODUCTION BRIEF — lock the global visual identity (color, light source, mood, materials)
+C) SHOT DIVERSITY MATRIX — assign a UNIQUE compositional strategy to each frame
 
 ═══════════════════════════════════════════════════════════════
 PHASE A: CONCEPT HIERARCHY
 ═══════════════════════════════════════════════════════════════
 
-Read the user's creative direction and any visual analysis. Extract every distinct visual CONCEPT — a concept is a subject, a material interaction, a spatial relationship, a tension, a texture contrast, a gesture, an object, a light behavior.
+Extract every distinct visual CONCEPT from the user's direction. A concept is a subject, a gesture, a spatial relationship, a material tension, a light behavior, an absence.
 
-Then RANK them by visual weight: which concept is the REASON a viewer stops and looks?
+Rank by visual weight: which concept makes a viewer STOP AND LOOK?
 
 Rules:
-- Each frame gets exactly ONE primary concept. That concept is the reason the frame exists.
-- A primary concept must be expressible in 5 words or fewer. If you need more, it's not one concept — split it.
-- Supporting elements exist ONLY to serve the primary concept. If an element doesn't strengthen the primary, remove it.
-- Atmosphere (light quality, color grade, environmental texture) is constant across the set — it is NOT a concept, it's the medium.
-- NEVER assign more than 2 visual subjects to any single frame. One primary, one secondary at most. Two subjects is already dense for cinema.
-
-If the user mentions 6 concepts but requests 4 frames: the top 4 become primaries, the others become supporting texture distributed across frames. If the user mentions 2 concepts and requests 4 frames: explore those 2 concepts from 4 different angles/scales/moments.
-
-CONCEPT EXAMPLES — what counts as ONE concept:
-- "silk catching side-light against concrete" (material tension)
-- "figure receding into corridor depth" (spatial scale)
-- "hands gripping rusted iron railing" (gesture + texture)
-- "shadow bisecting a face" (light behavior)
-- "empty chair in a vast room" (absence + scale)
-
-NOT one concept (too many ideas):
-- "woman in silk on stairs with flowing fabric and dramatic light and vintage feel" — this is 4+ concepts
+- Each frame gets ONE primary concept — the reason the frame exists
+- A primary concept must be expressible in 5 words or fewer
+- Max 2 visual subjects per frame. Fewer is better.
+- If the user mentions more concepts than frames: top N become primaries, rest become supporting texture
+- If fewer concepts than frames: explore the same concepts from different angles, scales, and moments
 
 ═══════════════════════════════════════════════════════════════
-PHASE B: PRODUCTION BRIEF
+PHASE B: PRODUCTION BRIEF (global — shared across all frames)
 ═══════════════════════════════════════════════════════════════
 
-Fill every section with concrete, technical, unambiguous language:
+1. COLOR GRADE — One sentence. Copied VERBATIM into every prompt.
 
-1. COLOR GRADE
-One sentence defining the exact color treatment technically. This sentence will be copied VERBATIM into every prompt.
+2. COLOR ANCHORS — 3 hex colors with RANGE: one deep dark, one rich midtone, one bright/accent. NOT three similar tones. These define the palette's contrast and intention.
 
-2. COLOR ANCHORS
-3 hex colors: shadow, midtone, highlight/accent.
+3. LIGHT SOURCE — Describe the GLOBAL light source and its quality through visible effect. NOT equipment names.
+Describe: direction, quality (hard/soft), color temperature as feeling, shadow behavior, contrast level.
+Example: "Overcast cold light giving a bluish desaturated tone. Deep shadows pool in architectural recesses."
+This is the light SOURCE only — the camera-to-light ANGLE changes per frame in Phase C.
 
-3. CINEMATIC LIGHTING
-Describe the light through its VISIBLE EFFECT on the scene — NOT through equipment or names.
-NEVER name equipment (softbox, HMI, fill light, bounce) or cinematographers/directors — the downstream model cannot interpret these.
-Instead describe: direction ("cold light cutting across from the left"), quality ("harsh side-light carving deep shadows"),
-color temperature as feeling ("cold blue-grey wash", "warm amber spill"), shadow behavior ("deep shadow swallowing the background"),
-contrast ("flattened tone with minimal contrast" or "high contrast with crushed blacks").
-Example: "Overcast cold light giving a bluish, desaturated tone with flattened contrast. Deep shadows pool in the architecture."
+4. MATERIALS & TEXTURES — 3-5 surfaces with finish, wear, reflectivity, and how they respond to the light.
 
-4. LENS & CAMERA
-Focal length, depth of field and its purpose, camera angle and height, lens character (wide distortion, telephoto compression, anamorphic flare).
+5. MOOD — One sentence. A specific emotional situation, not a vague adjective.
 
-5. MATERIALS & TEXTURES
-3-5 dominant surfaces. Specific about finish, wear, reflectivity.
+6. SUBJECT DIRECTION — Posture, styling, relationship to camera, scale within environment.
 
-6. MOOD
-One sentence — not vague, not an adjective. A specific emotional situation.
+7. ENVIRONMENT — Physical space, condition, time of day, atmosphere (haze, dust, rain, clarity).
 
-7. SUBJECT DIRECTION
-Posture, styling, relationship to camera, level of eye contact.
+8. VISUAL MOTIFS — 2-3 recurring elements threaded across every shot.
 
-8. ENVIRONMENT DIRECTION
-Physical space, materials, scale, condition, time of day.
-
-9. VISUAL MOTIFS
-2-3 recurring elements threaded across every shot.
-
-10. NARRATIVE ARC
-How the set progresses from first to last — emotional, spatial, or temporal.
+9. NARRATIVE ARC — How the set progresses from first to last — emotional, spatial, or temporal.
 
 ═══════════════════════════════════════════════════════════════
-CINEMATIC IMAGE PRINCIPLES
+PHASE C: SHOT DIVERSITY MATRIX (per-frame — each frame is unique)
 ═══════════════════════════════════════════════════════════════
 
-Real cinematic images are NOT clean, NOT perfect, NOT evenly lit. Apply these principles:
+THIS IS THE MOST IMPORTANT PHASE. This is what makes the set cinematic instead of monotonous.
 
-IMPERFECTION IS REALISM
-- Film grain, chromatic aberration, lens flares, halation on highlights — these are features, not artifacts
-- Skin has pores, uneven tone, micro-texture. Fabric has creases, pulls, uneven drape. Surfaces have wear.
-- Perfect symmetry and uniform lighting are the hallmarks of AI-generated images. Asymmetry is cinematic.
+For each frame, assign ALL of these compositional decisions:
 
-CONTRAST AND SHADOW ARE NOT FLAWS
-- Dense shadows with lost detail are a creative choice. Crushed blacks, blown highlights — these define the mood.
-- Not every surface needs to be visible. What you hide is as important as what you show.
-- High-key and low-key are specific lighting decisions, not "too bright" or "too dark."
+1. SHOT SCALE: wide establishing / medium / close-up / extreme close-up
+2. CAMERA ANGLE: low-angle / eye-level / high angle / overhead / dutch/oblique
+3. SUBJECT PLACEMENT: center dominant / rule-of-thirds offset / edge with negative space / foreground obstruction / split frame
+4. DEPTH PLANES: explicitly name what occupies FOREGROUND / MIDGROUND / BACKGROUND and how each is treated optically (sharp, soft, silhouetted, blurred, partially obscuring)
+5. ENERGY STATE: dynamic motion / static tension / frozen moment / implied motion / environmental motion only
+6. CAMERA-TO-LIGHT ANGLE: how the global light source hits the scene from THIS camera position (backlit/silhouette, side-lit, front-lit, overhead, under-lit by reflection)
 
-MOTIVATED CHOICES
-- Every element in frame has a reason. The light comes from somewhere physical. The depth of field isolates something specific.
-- A shallow depth of field with bokeh is not "soft" — it's a deliberate focus hierarchy that tells the viewer where to look.
-- Motion blur, lens distortion, grain — these are intentional when they serve the emotional register.
+DIVERSITY CONSTRAINTS — these are MANDATORY:
+- No two frames may share the same camera angle
+- No two frames may share the same shot scale
+- No two frames may share the same subject placement strategy
+- At least one frame must use negative space as a dominant compositional element
+- At least one frame must have the subject NOT centered
+- At least one frame must use a non-eye-level camera angle
+- Depth planes must vary: at least one frame with deep focus, at least one with shallow isolation
 
-LESS IS MORE
-- An empty frame with one element in the right place is more powerful than a full frame with everything.
-- Negative space creates tension, solitude, scale, or breathing room. It's never wasted.
-- The fewer elements in a frame, the more each one matters.
+CAMERA ANGLE defines emotional relationship:
+- Low angle: power, threat, ground-level urgency — viewer looks UP
+- Eye level: confrontation, intimacy, documentary truth
+- High angle: vulnerability, surveillance, environmental scale — subject shrinks
+- Dutch/oblique: unease, disorientation, visual dynamism
+- Overhead: abstraction, pattern, removal from human scale
 
-BRAND/DESIGNER TRANSLATION:
-Always translate brand references into visual characteristics. Never leave a brand name as the description.
+SUBJECT PLACEMENT defines visual tension:
+- Center: symmetry, confrontation, direct address — powerful but overused
+- Rule-of-thirds: dynamic tension, room for environment, implied direction
+- Edge/margin: vast negative space, isolation, environmental dominance
+- Foreground obstruction: depth and voyeuristic intimacy (viewed past a doorway, shoulder, foliage)
+- Split frame: two elements in dialogue across the composition
+
+═══════════════════════════════════════════════════════════════
+CINEMATIC PRINCIPLES
+═══════════════════════════════════════════════════════════════
+
+SHADOW IS A CREATIVE TOOL — dense shadows with lost detail are a CHOICE. What you hide is as important as what you show.
+DEPTH IS MANDATORY — every frame must have visual depth through layered planes, not flat subjects on flat backgrounds.
+ASYMMETRY IS CINEMATIC — perfect symmetry and even lighting are hallmarks of AI. Real cinema is asymmetric.
+NEGATIVE SPACE IS POWERFUL — empty frame with one element in the right place beats a full frame with everything.
+IMPERFECTION IS REALISM — grain, halation, uneven surfaces, environmental wear. Perfect = artificial.
 
 RULES:
-- Every field: concrete enough to replicate without interpretation
+- Every field: concrete enough to execute without interpretation
 - No hedging — commit to specific choices
-- No options or alternatives — one answer per field
 - The brief is a CONTRACT
 
 Return ONLY valid JSON:
 {
   "concepts": [
-    { "concept": "concept description", "role": "primary", "frame": 1, "fiveWordPitch": "five words max" },
-    { "concept": "supporting element", "role": "supporting", "frame": 1, "fiveWordPitch": "five words" },
-    { "concept": "next primary concept", "role": "primary", "frame": 2, "fiveWordPitch": "five words" }
+    {
+      "concept": "concept description",
+      "role": "primary",
+      "frame": 1,
+      "fiveWordPitch": "five words max",
+      "shotScale": "wide establishing",
+      "cameraAngle": "low-angle",
+      "subjectPlacement": "offset right, negative space left",
+      "depthPlanes": "foreground: soldiers sharp / midground: helicopter motion-blur / background: tree line soft",
+      "energyState": "dynamic motion",
+      "cameraToLight": "backlit, subjects partially silhouetted"
+    }
   ],
   "colorGrade": "single sentence — the exact color grade",
-  "colorAnchors": ["#XXXXXX", "#XXXXXX", "#XXXXXX"],
-  "lighting": "exact lighting setup",
-  "lens": "exact lens and camera",
+  "colorAnchors": ["#deep_dark", "#rich_midtone", "#bright_accent"],
+  "lightSource": "global light source described through visible effect",
   "materials": "dominant materials and textures",
   "mood": "exact emotional register",
   "subjectDirection": "how subjects are treated",
@@ -312,50 +323,57 @@ export function buildBriefUserMessage(
 function buildGenerateSystemPrompt(targetModel: TargetModel): string {
   const profile = MODEL_PROFILES[targetModel]
 
-  return `You are a prompt technician. You receive a LOCKED CREATIVE BRIEF with pre-assigned concept hierarchy, and you translate each frame into a single image generation prompt. You do NOT add creative ideas. You TRANSCRIBE the brief.
+  return `You are a prompt writer for cinematic image generation. You receive a LOCKED CREATIVE BRIEF with per-frame shot cards and you write one image prompt per frame. Each prompt must read like a storyboard shot description — pure visual storytelling.
 
 TARGET MODEL: ${profile.label}
 ${profile.promptRules}
 
 YOUR ROLE:
 - The creative brief is your ONLY source of truth
-- Each frame has ONE assigned primary concept. That concept is the reason the frame exists.
-- Your job is FORMAT CONVERSION: brief → model-optimized prompts
-- Zero creative latitude. Zero embellishment. Zero interpretation.
+- Each frame has a complete SHOT CARD: concept, angle, scale, placement, depth planes, energy, light angle
+- Your job: translate each shot card into a vivid, descriptive prompt
+- Follow the shot card EXACTLY — the compositional decisions are already made
 
-SINGLE-CONCEPT-PER-FRAME DISCIPLINE:
-This is the most important rule. Every cinematic frame communicates ONE clear idea.
-- The PRIMARY concept from the brief gets ~70% of the prompt's descriptive weight
-- Supporting elements get ~20% — they exist only to reinforce the primary
-- Atmosphere (light, color, grade) gets ~10% — it is the constant medium, not the subject
-- If you cannot summarize the frame's purpose in 5 words, the prompt has too many ideas
-- MAX 2 visual subjects per frame. One primary, one secondary if essential. Two is already dense.
-- Negative space, empty areas, minimal composition — these are POWERFUL. A frame does not need to be full.
+PROMPT ANATOMY — follow this structure, inspired by how great storyboard descriptions work:
 
-CINEMATIC REALISM — THESE ARE FEATURES, NOT ARTIFACTS:
-- Film grain, halation on highlights, chromatic aberration, lens flares — include where motivated
-- Dense shadows with lost detail, crushed blacks, blown highlights — these define mood, not exposure errors
-- Shallow depth of field is a focus hierarchy telling the viewer where to look — not "softness"
-- Asymmetry, imperfect framing, environmental wear — these are marks of reality
-- Perfect uniformity (even lighting, symmetrical composition, flawless surfaces) reads as AI-generated
+1. OPEN WITH SHOT GEOMETRY (first 6 words) — angle + scale + energy state
+   Examples: "A wide, low-angle action shot", "A tight, eye-level portrait", "An overhead static composition"
+   This front-loads the compositional skeleton into the strongest token positions.
 
-PROMPT STRUCTURE (respect positional bias — front-load what matters):
-1. PRIMARY CONCEPT first — the subject/action that IS this frame (strongest token positions)
-2. One supporting element if essential
-3. Environment/atmosphere as spatial context — describe the physical space, weather, air quality
-4. Light described through EFFECT — how it falls on surfaces, shadow behavior, color temperature as feeling, contrast level
-5. Color grade + hex anchors bound to specific surfaces
-6. Composition — angle, depth of field, what's in focus and why, spatial relationships
-7. One organic texture cue (film grain, skin pores, surface wear) — MANDATORY anti-AI measure
-Write like a storyboard shot description. Describe what the camera SEES and what the atmosphere FEELS like.
-Length: ${profile.optimalLengthMin}-${profile.optimalLengthMax} words per prompt. Every word earns its place.
+2. SUBJECT IN RELATIONSHIP — never describe the subject in isolation. Define them through their relationship
+   to a spatial anchor (an object, architecture, another figure, a light source, empty space).
+   "4 soldiers disembarking from a massive helicopter" — subject defined by relationship to anchor.
+   "The helicopter dominates the left half of the frame" — spatial anchor placed explicitly.
 
-MANDATORY REPETITION:
-These appear VERBATIM in every prompt:
-- The color grade sentence — word for word
-- The 3 color anchor hex values
-- The cinematic lighting reference
-- The lens/camera specification
+3. THREE DEPTH PLANES — explicitly name what occupies foreground, midground, background, and how each
+   is treated optically (sharp, soft, silhouetted, blurred, partially obscuring).
+   This is NOT optional. Every prompt must have layered visual depth.
+
+4. LIGHT THROUGH VISIBLE EFFECT — describe how light falls on surfaces and what it does to the scene's tone.
+   "Cold and overcast, giving the entire scene a bluish, flattened tone with minimal contrast."
+   "Harsh side-light carving deep shadow across the left half of the face."
+   Include the camera-to-light angle from the shot card (backlit, side-lit, front-lit, etc.).
+
+5. ATMOSPHERIC TEXTURE — sensory details that create immersion.
+   "Slightly wet or reflective ground", "hazy pressure-wave distorting the air", "dust-settled surfaces"
+
+6. EMOTIONAL PURPOSE — why this composition exists. Not technical justification, but felt experience.
+   "Creating a grounded and urgent perspective", "emphasizing the oppressive weight of the aircraft"
+
+WORD BUDGET GUIDANCE:
+- Subject + action: ~20%
+- Spatial composition + scale relationships: ~22%
+- Environment + ground plane: ~13%
+- Light + atmosphere: ~16%
+- Camera/DoF/depth planes: ~13%
+- Motion/energy: ~10%
+- Emotional register: ~7%
+The subject gets LESS THAN a quarter. Composition and atmosphere get the majority.
+
+MANDATORY IN EVERY PROMPT:
+- The color grade sentence — VERBATIM from the brief
+- The 3 color anchor hex values — bound to specific surfaces
+- At least one organic texture cue (grain, pores, wear, imperfection)
 
 ${CINEMATIC_PROMPT_STYLE}
 
@@ -366,25 +384,22 @@ ${QWEN_ENCODER_RULES}
 ${FORBIDDEN_LANGUAGE}
 
 VALIDATION — CHECK EVERY PROMPT:
-- Does each prompt have exactly ONE clear primary concept? If a prompt tries to say two things, cut one.
-- Can you summarize each frame in 5 words? If not, simplify.
-- Is the color grade VERBATIM in every prompt?
-- Are the 3 hex anchors in every prompt, bound to specific surfaces/objects?
-- Same lighting quality and lens feel across all prompts?
-- Does the set follow the narrative arc?
+- Does it open with shot geometry in the first 6 words?
+- Does each frame have a DIFFERENT angle, scale, and subject placement from every other frame?
+- Are three depth planes explicitly named with optical treatment?
+- Is the color grade VERBATIM?
+- Are hex anchors bound to specific surfaces?
+- Is light described through visible effect, NOT equipment or names?
 - No prompt outside ${profile.optimalLengthMin}-${profile.optimalLengthMax} words
-- Does EVERY prompt include at least one organic texture cue (grain, pores, wear, imperfection)?
-- Does the prompt front-load the primary subject in the first sentence?
-- Zero forbidden words? Zero "sharp focus", "crisp details", "high quality", "8k"?
-- ZERO equipment names? No softbox, HMI, key light, fill, bounce, reflector?
-- ZERO name-dropping? No cinematographer names, director names, or film titles in the output?
-- Does the prompt read like a storyboard shot description — pure visual storytelling?
+- At least one organic texture cue per prompt?
+- ZERO equipment names, cinematographer names, director names, film titles?
+- Does the prompt read like a storyboard shot description?
 
 OUTPUT: Return ONLY valid JSON:
 {
   "prompts": [
-    { "label": "Wide Establishing Shot", "prompt": "..." },
-    { "label": "Medium Shot", "prompt": "..." }
+    { "label": "Wide Low-Angle — Ground Urgency", "prompt": "..." },
+    { "label": "Tight Eye-Level — Intimate Detail", "prompt": "..." }
   ]
 }`
 }
@@ -504,12 +519,12 @@ export function buildUserMessage(
   // Brief-driven generation (primary path for generate mode)
   if (creativeBrief && mode === 'generate') {
     lines.push('\n=== LOCKED CREATIVE BRIEF — YOUR ONLY SOURCE OF TRUTH ===')
-    lines.push('Every visual decision is made. You are a transcriber, not a creative.')
 
-    // Concept hierarchy — per-frame assignments
+    // Per-frame shot cards — the complete compositional contract
     if (creativeBrief.concepts?.length > 0) {
       lines.push('')
-      lines.push('=== CONCEPT HIERARCHY (one primary concept per frame) ===')
+      lines.push('=== PER-FRAME SHOT CARDS ===')
+      lines.push('Each frame has a complete shot card. Follow it EXACTLY — every compositional decision is already made.')
       const frameMap = new Map<number, typeof creativeBrief.concepts>()
       for (const c of creativeBrief.concepts) {
         const arr = frameMap.get(c.frame) ?? []
@@ -519,38 +534,45 @@ export function buildUserMessage(
       for (const [frame, concepts] of Array.from(frameMap.entries()).sort((a, b) => a[0] - b[0])) {
         const primary = concepts.find(c => c.role === 'primary')
         const supporting = concepts.filter(c => c.role !== 'primary')
-        lines.push(`\nFRAME ${frame}:`)
+        lines.push(`\n--- FRAME ${frame} ---`)
         if (primary) {
-          lines.push(`  PRIMARY (70% of prompt): ${primary.concept}`)
+          lines.push(`  CONCEPT: ${primary.concept}`)
           lines.push(`  5-word pitch: "${primary.fiveWordPitch}"`)
+          lines.push(`  SHOT SCALE: ${primary.shotScale ?? 'medium'}`)
+          lines.push(`  CAMERA ANGLE: ${primary.cameraAngle ?? 'eye-level'}`)
+          lines.push(`  SUBJECT PLACEMENT: ${primary.subjectPlacement ?? 'rule-of-thirds'}`)
+          lines.push(`  DEPTH PLANES: ${primary.depthPlanes ?? 'foreground/midground/background — specify in prompt'}`)
+          lines.push(`  ENERGY STATE: ${primary.energyState ?? 'static tension'}`)
+          lines.push(`  CAMERA-TO-LIGHT: ${primary.cameraToLight ?? 'side-lit'}`)
         }
         for (const s of supporting) {
-          lines.push(`  ${s.role.toUpperCase()} (${s.role === 'supporting' ? '20%' : '10%'}): ${s.concept}`)
+          lines.push(`  SUPPORTING: ${s.concept}`)
         }
       }
       lines.push('')
-      lines.push('CRITICAL: Each frame prompt must be DOMINATED by its primary concept. Supporting elements serve the primary — they do not compete with it. If you find a prompt trying to say two things equally, cut one.')
+      lines.push('CRITICAL: Each prompt OPENS with its shot geometry (angle + scale + energy) in the first 6 words.')
+      lines.push('Each prompt must be visually DISTINCT from every other — different angle, different scale, different placement.')
     }
 
     lines.push('')
-    lines.push(`COLOR GRADE (copy VERBATIM into every prompt): ${creativeBrief.colorGrade}`)
-    lines.push(`COLOR ANCHORS (include in every prompt, bound to surfaces): ${creativeBrief.colorAnchors.join(', ')}`)
-    lines.push(`LIGHTING QUALITY (describe through effect — NEVER name equipment or people): ${creativeBrief.lighting}`)
-    lines.push(`LENS & CAMERA: ${creativeBrief.lens}`)
+    lines.push('=== GLOBAL VISUAL IDENTITY (shared across all frames) ===')
+    lines.push(`COLOR GRADE (copy VERBATIM): ${creativeBrief.colorGrade}`)
+    lines.push(`COLOR ANCHORS (bound to surfaces): ${creativeBrief.colorAnchors.join(', ')}`)
+    lines.push(`LIGHT SOURCE: ${creativeBrief.lightSource}`)
     lines.push(`MATERIALS: ${creativeBrief.materials}`)
     lines.push(`MOOD: ${creativeBrief.mood}`)
     lines.push(`SUBJECT: ${creativeBrief.subjectDirection}`)
     lines.push(`ENVIRONMENT: ${creativeBrief.environmentDirection}`)
-    lines.push(`VISUAL MOTIFS (thread across prompts): ${creativeBrief.visualMotifs.join(' | ')}`)
-    lines.push(`NARRATIVE ARC: ${creativeBrief.narrativeArc}`)
+    lines.push(`MOTIFS: ${creativeBrief.visualMotifs.join(' | ')}`)
+    lines.push(`ARC: ${creativeBrief.narrativeArc}`)
     lines.push('')
     lines.push('=== RULES ===')
-    lines.push('1. Each frame has ONE primary concept — make it dominate the prompt.')
-    lines.push('2. The color grade sentence must appear WORD FOR WORD in every prompt.')
-    lines.push('3. The 3 hex color anchors must appear in every prompt, bound to specific surfaces/objects.')
-    lines.push('4. Same lighting quality and lens feel in every prompt — describe light through its visible EFFECT.')
-    lines.push('5. NEVER name equipment, cinematographers, directors, or film titles in the output prompt.')
-    lines.push('6. Max 2 subjects per frame. Fewer is better. Empty space is powerful.')
+    lines.push('1. Open every prompt with shot geometry: angle + scale + energy in the first 6 words.')
+    lines.push('2. Name THREE depth planes per prompt (foreground/midground/background) with optical treatment.')
+    lines.push('3. Color grade VERBATIM in every prompt. Hex anchors bound to surfaces.')
+    lines.push('4. Light described through visible EFFECT — varies per frame via camera-to-light angle.')
+    lines.push('5. NEVER name equipment, cinematographers, directors, or film titles.')
+    lines.push('6. Each frame must be compositionally DISTINCT from every other frame.')
     lines.push('7. Follow the narrative arc from first to last shot.')
 
     return lines.join('\n')

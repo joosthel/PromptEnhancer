@@ -86,10 +86,12 @@ Architecture: ~1B flow DiT + 8B text encoder. Features from Qwen3 layers [9,18,2
 CRITICAL: ~77 ACTIVE TOKENS (~50-100 words). Every word must earn its place. No upsampling — Klein encodes EXACTLY what you write.
 
 POSITIONAL BIAS (Qwen3 causal attention):
-- First 25%: STRONGEST → primary subject here
-- Middle 50%: MODERATE → environment, atmosphere, lighting quality
-- Last 25%: WEAKEST → camera, grade, texture cues
-Front-load the primary concept. What you say first dominates.
+- First 25%: STRONGEST → shot geometry + primary subject here
+- Middle 50%: MODERATE → environment, atmosphere, depth planes, lighting quality
+- Last 25%: WEAKEST → grade, texture cues
+OPEN every prompt with SHOT GEOMETRY in the first 6 words: angle + scale + energy.
+Example: "A wide, low-angle action shot" — this front-loads the compositional skeleton.
+Then immediately place the primary subject in relationship to a spatial anchor.
 
 CINEMATIC LIGHTING — THE MOST IMPORTANT RULE:
 NEVER name lighting equipment (softbox, HMI, key light, fill, bounce, reflector, diffusion panel).
