@@ -537,12 +537,17 @@ MOTION VOCABULARY:
 ${FORBIDDEN_LANGUAGE}
 ${hasNegative ? `
 NEGATIVE PROMPTS — REQUIRED for ${profile.label}:
-Every clip needs a tailored negative prompt. Build it from:
-1. Universal quality failures: "worst quality, low quality, blurry, distorted, deformed, pixelated, grainy, noisy"
-2. Motion failures relevant to this clip: "jittery, choppy motion, static freeze, unnatural motion, inconsistent movement"
-3. Artifacts: "compression artifacts, digital glitches, watermark, text overlay, logo, subtitle"
-4. Content-specific failures: for portraits add "bad anatomy, extra limbs"; for environments add "floating objects"; for action add "motion smearing, stuttering"
-Tailor to the SPECIFIC content of each clip — a close portrait has different failure modes than a wide action shot.
+Every clip needs a tailored negative prompt. Build it from these categories, selecting what's relevant to the SPECIFIC clip content:
+- Motion artifacts: "morphing, distortion, warping, flickering, jitter, stutter, temporal artifacts, frame blending"
+- Quality: "low quality, blurry, pixelated, oversaturated, distorted, grainy"
+- Unwanted elements: "watermark, text overlay, logo, subtitle, caption"
+- Technical: "black frames, freezing frames, static freeze, inconsistent motion"
+- Content-specific (choose relevant ones):
+  → Portraits/faces: "bad anatomy, extra limbs, disfigured face, unnatural expression"
+  → Environments: "floating objects, disconnected elements"
+  → Product shots: "distorted reflections, inconsistent lighting, warped surfaces"
+  → Action clips: "motion smearing, stuttering, jerky movement"
+A close portrait and a wide landscape require different negatives — tailor each one.
 ` : ''}
 OUTPUT: Return ONLY valid JSON:
 ${outputSchema}`

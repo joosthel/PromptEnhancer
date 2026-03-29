@@ -202,55 +202,59 @@ NO negative prompts. NO prompt weights. NO meta-language ("a photograph of").
     label: 'LTX-Video 2.3',
     modes: ['video'],
     promptFormat: 'natural',
-    optimalLengthMin: 60,
-    optimalLengthMax: 250,
+    optimalLengthMin: 80,
+    optimalLengthMax: 400,
     supportsNegativePrompts: true,
     maxReferenceImages: 1,
-    knownWeaknesses: ['complex-physics', 'chaotic-multi-element-scenes', 'text-rendering', 'logos'],
+    knownWeaknesses: ['complex-physics', 'chaotic-multi-element-scenes', 'text-rendering', 'high-frequency-patterns'],
     promptRules: `LTX-VIDEO 2.3 (LTXV 22B by Lightricks) RULES:
-API: fal-ai/ltx-2.3/text-to-video — Resolutions: 1080p / 1440p / 2160p. Duration: 6s / 8s / 10s. Generates audio by default.
+Architecture: 22B DiT with gated attention text connector — prompts followed precisely. New VAE: sharper detail, cleaner edges.
+API: fal-ai/ltx-2.3/text-to-video — 1080p/1440p/2160p · 6s/8s/10s · native audio generation.
+CFG: keep at 4.0 or below. Above 4.0 causes contrast burn, ringing, and flicker artifacts.
 
-PROMPT FORMAT: A single flowing paragraph in PRESENT TENSE. 4–8 sentences matched to shot scale.
-Write like a present-tense storyboard description — what is happening RIGHT NOW, not what will happen.
+PROMPT FORMAT: A single flowing paragraph in PRESENT TENSE. 4–8 sentences, matched to video duration.
+Match prompt detail to duration — underdescribed prompts for 8-10s clips cause rushed, incomplete motion.
 
 STRUCTURE ORDER:
 1. Shot establishment — camera angle, scale, framing
 2. Scene setting — environment, light, color, atmosphere
-3. Subject and action — who/what is in frame and what they're doing (motion as continuous present)
-4. Character detail — age, clothing, hair, distinguishing features. Express emotion through PHYSICAL CUES only, not abstract labels ("her jaw tightens" not "she feels afraid")
-5. Camera movement — explicit movement with timing: "The camera slowly dolls in as...", "A steady handheld tracks..."
-6. Audio — ambient sounds, music quality, dialogue (in quotation marks), speech characteristics
+3. Subject and action — motion as continuous present ("walks", "rotates", "catches light")
+4. Character detail — age, clothing, hair. Express emotion through PHYSICAL CUES only ("her jaw tightens" not "she feels afraid")
+5. Camera movement — explicit with timing: "The camera slowly dolls in as...", "A steady pan reveals..."
+6. Audio — ambient sounds, dialogue in quotation marks, music quality, speech characteristics
 
 WHAT WORKS WELL:
-- Atmospheric elements: fog, mist, golden-hour light, rain, steam, smoke
-- Explicit camera language: "slow dolly in", "handheld tracking", "crane rises", "static wide"
-- Emotive human moments with subtle physical gestures
-- Stylized aesthetics: painterly quality, noir atmosphere, animation-style
-- Strategic single light sources: motivated practicals, natural window light, golden hour
-- Present-tense verbs: "stands", "turns", "walks", "catches light", "diffuses across"
-- Characters talking and singing — the model handles dialogue and lip sync reliably
+- Atmospheric elements: fog, mist, golden-hour light, rain, steam, smoke, candlelight
+- Explicit camera language: "slow dolly in", "steady tracking", "crane rises", "static wide", "shallow depth of field"
+- Emotive human moments with subtle physical gestures and specific character detail
+- Commercial/product: "luxury bottle rotating slowly with dramatic rim lighting on black background"
+- Single motivated light source — golden hour, tungsten, practical window light
+- Cinematic terms: "anamorphic", "macro lens", "telephoto compression", "cinematic color grading"
+- Dialogue and lip sync — the model handles speaking characters reliably
 
 WHAT TO AVOID:
-- Internal emotional states — use physical/visual cues only
+- Internal emotional states — physical cues only
 - Text, logos, signage — unreliable rendering
-- Complex physics: water splashing, explosions, chaotic crowd movement
-- Overloaded scenes — too many simultaneous actions compete for quality
-- Conflicting light logic — one motivated light source per scene
-- Overcomplicated prompts — start simple, add layers
+- "handheld chaotic" — causes warping artifacts
+- Complex physics: explosions, chaotic water, crowd stampedes
+- Conflicting light logic (two sources with opposite directions)
+- High-frequency micro-patterns: brick walls, mesh, micro-check fabric
+- Overloaded scenes — one dominant action per clip
+- Numeric specifications: "exactly 3 birds at 45 degrees" — use descriptive language instead
 
-NEGATIVE PROMPT GUIDANCE:
-LTX-Video 2.3 supports a separate negative prompt. Generate one per clip that addresses likely failure modes for that specific content type. Common effective negatives:
-- Quality: "worst quality, low quality, deformed, distorted, disfigured, blurry, pixelated, low resolution, grainy, noisy"
-- Motion: "inconsistent motion, jittery, choppy motion, static frame, freeze, unnatural motion, jerky"
-- Artifacts: "compression artifacts, jpeg artifacts, digital artifacts, glitches, noise"
-- Style: "watermark, text overlay, logo, signature, subtitle, caption"
-- Physics: "bad anatomy, extra limbs, floating objects, disconnected body parts"
-Tailor the negative prompt to the specific content — a portrait needs different negatives than a landscape.
+NEGATIVE PROMPT GUIDANCE (MANDATORY — tailored per clip):
+LTX-2.3 supports negative prompts. Build one per clip from these categories:
+- Motion artifacts: "morphing, distortion, warping, flickering, jitter, stutter, temporal artifacts, frame blending, unnatural motion"
+- Quality: "low quality, blurry, pixelated, oversaturated, distorted, low resolution, grainy, jpeg artifacts"
+- Unwanted elements: "watermark, text overlay, logo, subtitle, caption, cartoon, CGI"
+- Technical: "black frames, freezing frames, inconsistent motion, static freeze"
+- Content-specific: portrait → "bad anatomy, extra limbs, disfigured face"; landscape → "floating objects, disconnected elements"; action → "motion smearing, stuttering"
+Tailor to the SPECIFIC content — a close portrait has different failure modes than a wide establishing shot.
 
 CAMERA MOVEMENT VOCABULARY:
-"slowly dolls in" / "pulls back to reveal" / "tracks alongside" / "crane rises above" / "handheld follows"
-"pans across" / "tilts up to reveal" / "orbits around" / "static locked frame" / "slow push toward"
-Specify movement relative to subject: "the camera moves with", "as the camera rises, the subject..."`,
+"slowly dolls in" / "pulls back to reveal" / "tracks alongside" / "crane rises above" / "static locked frame"
+"pans across" / "tilts up to reveal" / "orbits around" / "shallow depth of field push" / "wide establishing hold"
+Specify relative to subject: "as the camera rises, the subject shrinks against the horizon"`,
   },
 }
 
