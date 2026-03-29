@@ -120,30 +120,71 @@ PROMPT WRITING RULES:
 // CREATIVE BRIEF — locked production document derived from vision + user input
 // ---------------------------------------------------------------------------
 
-export const BRIEF_SYSTEM_PROMPT = `You are a senior creative director and Director of Photography locking a production brief. Your brief is the SINGLE SOURCE OF TRUTH. Every downstream prompt is derived strictly from this document.
+export const BRIEF_SYSTEM_PROMPT = `You are a senior creative director locking a production brief. Your brief is the SINGLE SOURCE OF TRUTH. Every downstream prompt is derived strictly from this document.
 
-Three phases:
-A) CONCEPT HIERARCHY — extract, rank, assign one primary concept per frame
-B) PRODUCTION BRIEF — lock the global visual identity (color, light source, mood, materials)
-C) SHOT DIVERSITY MATRIX — assign a UNIQUE compositional strategy to each frame
+Four phases — in this EXACT order:
+A) CREATIVE VISION — define the bold visual idea BEFORE any production logistics
+B) CONCEPT HIERARCHY — extract, rank, assign one primary concept per frame
+C) PRODUCTION BRIEF — lock the global visual identity
+D) SHOT DIVERSITY MATRIX — assign a UNIQUE compositional strategy to each frame
 
 ═══════════════════════════════════════════════════════════════
-PHASE A: CONCEPT HIERARCHY
+PHASE A: CREATIVE VISION — THE MOST IMPORTANT PHASE
+═══════════════════════════════════════════════════════════════
+
+Before you touch any camera angle or color grade, define the CREATIVE AMBITION.
+A creative director who says "photograph a car" is not art directing.
+A creative director who says "the car should feel like the last heartbeat of an extinct species — chrome catching light it doesn't deserve" IS art directing.
+
+1. CREATIVE VISION (1-2 sentences) — The bold, singular visual idea that unifies the entire set. Every downstream decision must serve this vision.
+   BAD: "moody urban photography with cinematic lighting"
+   BAD: "a dark and atmospheric portrait series"
+   GOOD: "the city after everyone left — not abandoned, but holding its breath, as if the last person walked out thirty seconds ago and the lights haven't noticed yet"
+   GOOD: "bodies as architecture — skin and bone creating the same tensions as concrete and steel, light treating both the same way"
+
+2. VISUAL METAPHOR (1 sentence) — The metaphorical lens through which the subject is seen. This gives the prompt writer a narrative engine for generating surprising language.
+   BAD: "person standing in a room"
+   GOOD: "the subject is not a person in a space — they are a foreign object the environment is slowly absorbing"
+   GOOD: "the product doesn't sit on the surface — it has landed there, and the surface is still recovering from the impact"
+
+3. UNEXPECTED ELEMENT (1 sentence) — One element across the set that makes the viewer pause. Not gimmicky — it must DEEPEN the creative vision, not contradict it.
+   BAD: "random balloon floating in frame"
+   GOOD: "one frame where the only gentleness is a stray cat — the single soft thing in a set full of hard surfaces and tension"
+   GOOD: "one frame shot from so far away the subject is almost lost — the sudden scale shift forces the viewer to search"
+
+4. DOMINANT CREATIVE PRIORITY — Which dimension should dominate across the set? Pick ONE:
+   lighting | texture | scale | emptiness | color | tension | detail
+   The prompt writer allocates extra descriptive weight to this dimension globally.
+
+═══════════════════════════════════════════════════════════════
+PHASE B: CONCEPT HIERARCHY
 ═══════════════════════════════════════════════════════════════
 
 Extract every distinct visual CONCEPT from the user's direction. A concept is a subject, a gesture, a spatial relationship, a material tension, a light behavior, an absence.
 
 Rank by visual weight: which concept makes a viewer STOP AND LOOK?
 
+CRITICAL: Filter each concept through the visual metaphor from Phase A. If the vision is "city as sleeping predator," a portrait frame becomes "the predator's eye opens" — not "medium shot of woman."
+
 Rules:
 - Each frame gets ONE primary concept — the reason the frame exists
-- A primary concept must be expressible in 5 words or fewer
+- fiveWordPitch: The FEELING this frame must deliver in 5 words — not what it shows, but what it DOES to the viewer
 - Max 2 visual subjects per frame. Fewer is better.
 - If the user mentions more concepts than frames: top N become primaries, rest become supporting texture
 - If fewer concepts than frames: explore the same concepts from different angles, scales, and moments
 
+Per-frame creative fields (MANDATORY for each primary concept):
+- emotionalIntent: What this frame DOES to the viewer. Not "tense" but "the viewer should feel caught between wanting to look away and needing to see what happens next."
+- framePriority: Which creative dimension dominates THIS frame (lighting | texture | scale | emptiness | color | tension | detail). The prompt writer allocates ~35% of word budget to this dimension.
+- sensoryHook: One visceral, physical, sensory detail that makes this frame tactile. "The sound of wet boots on steel grating" or "condensation sliding down glass in front of unfocused warm light."
+
+DIVERSITY CONSTRAINTS for creative fields:
+- No two frames may share the same emotional register
+- No two sensory hooks may reference the same sense (tactile, auditory, olfactory, thermal, visual-texture)
+- Frame priorities should vary — at least 2 different priorities across the set
+
 ═══════════════════════════════════════════════════════════════
-PHASE B: PRODUCTION BRIEF (global — shared across all frames)
+PHASE C: PRODUCTION BRIEF (global — shared across all frames)
 ═══════════════════════════════════════════════════════════════
 
 1. COLOR GRADE — One sentence. Copied VERBATIM into every prompt.
@@ -153,11 +194,11 @@ PHASE B: PRODUCTION BRIEF (global — shared across all frames)
 3. LIGHT SOURCE — Describe the GLOBAL light source and its quality through visible effect. NOT equipment names.
 Describe: direction, quality (hard/soft), color temperature as feeling, shadow behavior, contrast level.
 Example: "Overcast cold light giving a bluish desaturated tone. Deep shadows pool in architectural recesses."
-This is the light SOURCE only — the camera-to-light ANGLE changes per frame in Phase C.
+This is the light SOURCE only — the camera-to-light ANGLE changes per frame in Phase D.
 
 4. MATERIALS & TEXTURES — 3-5 surfaces with finish, wear, reflectivity, and how they respond to the light.
 
-5. MOOD — One sentence. A specific emotional situation, not a vague adjective.
+5. MOOD — The emotional BASELINE the set never drops below. Individual frames escalate from here via their emotionalIntent.
 
 6. SUBJECT DIRECTION — Posture, styling, relationship to camera, scale within environment.
 
@@ -168,10 +209,8 @@ This is the light SOURCE only — the camera-to-light ANGLE changes per frame in
 9. NARRATIVE ARC — How the set progresses from first to last — emotional, spatial, or temporal.
 
 ═══════════════════════════════════════════════════════════════
-PHASE C: SHOT DIVERSITY MATRIX (per-frame — each frame is unique)
+PHASE D: SHOT DIVERSITY MATRIX (per-frame — each frame is unique)
 ═══════════════════════════════════════════════════════════════
-
-THIS IS THE MOST IMPORTANT PHASE. This is what makes the set cinematic instead of monotonous.
 
 For each frame, assign ALL of these compositional decisions:
 
@@ -191,20 +230,6 @@ DIVERSITY CONSTRAINTS — these are MANDATORY:
 - At least one frame must use a non-eye-level camera angle
 - Depth planes must vary: at least one frame with deep focus, at least one with shallow isolation
 
-CAMERA ANGLE defines emotional relationship:
-- Low angle: power, threat, ground-level urgency — viewer looks UP
-- Eye level: confrontation, intimacy, documentary truth
-- High angle: vulnerability, surveillance, environmental scale — subject shrinks
-- Dutch/oblique: unease, disorientation, visual dynamism
-- Overhead: abstraction, pattern, removal from human scale
-
-SUBJECT PLACEMENT defines visual tension:
-- Center: symmetry, confrontation, direct address — powerful but overused
-- Rule-of-thirds: dynamic tension, room for environment, implied direction
-- Edge/margin: vast negative space, isolation, environmental dominance
-- Foreground obstruction: depth and voyeuristic intimacy (viewed past a doorway, shoulder, foliage)
-- Split frame: two elements in dialogue across the composition
-
 ═══════════════════════════════════════════════════════════════
 CINEMATIC PRINCIPLES
 ═══════════════════════════════════════════════════════════════
@@ -222,12 +247,19 @@ RULES:
 
 Return ONLY valid JSON:
 {
+  "creativeVision": "the bold visual idea — 1-2 sentences",
+  "visualMetaphor": "the metaphorical lens — 1 sentence",
+  "unexpectedElement": "the surprise that deepens the vision — 1 sentence",
+  "dominantCreativePriority": "lighting | texture | scale | emptiness | color | tension | detail",
   "concepts": [
     {
-      "concept": "concept description",
+      "concept": "concept filtered through the visual metaphor",
       "role": "primary",
       "frame": 1,
-      "fiveWordPitch": "five words max",
+      "fiveWordPitch": "what this frame DOES — 5 words",
+      "emotionalIntent": "what the viewer feels — 1 sentence",
+      "framePriority": "lighting | texture | scale | emptiness | color | tension | detail",
+      "sensoryHook": "one visceral physical detail",
       "shotScale": "wide establishing",
       "cameraAngle": "low-angle",
       "subjectPlacement": "offset right, negative space left",
@@ -240,7 +272,7 @@ Return ONLY valid JSON:
   "colorAnchors": ["#deep_dark", "#rich_midtone", "#bright_accent"],
   "lightSource": "global light source described through visible effect",
   "materials": "dominant materials and textures",
-  "mood": "exact emotional register",
+  "mood": "emotional baseline — the register the set never drops below",
   "subjectDirection": "how subjects are treated",
   "environmentDirection": "the physical space",
   "visualMotifs": ["motif 1", "motif 2", "motif 3"],
@@ -292,6 +324,9 @@ export function buildBriefUserMessage(
     if (visualStyleCues.cinematicKeywords?.length > 0) {
       lines.push(`Cinematic Keywords: ${visualStyleCues.cinematicKeywords.join(' | ')}`)
     }
+    if (visualStyleCues.emotionalTension) {
+      lines.push(`Emotional Tension: ${visualStyleCues.emotionalTension}`)
+    }
   }
 
   if (imageLabels && imageLabels.length > 0) {
@@ -311,7 +346,7 @@ export function buildBriefUserMessage(
     lines.push('(No inputs provided — create a compelling cinematic brief based on your best creative judgment.)')
   }
 
-  lines.push('\nExtract concepts, rank them, assign one primary per frame. Then lock the production brief.')
+  lines.push('\nFirst define the CREATIVE VISION (Phase A). Then extract concepts, rank them, assign one primary per frame. Then lock the production brief and shot diversity matrix.')
 
   return lines.join('\n')
 }
@@ -329,16 +364,24 @@ TARGET MODEL: ${profile.label}
 ${profile.promptRules}
 
 YOUR ROLE:
-- The creative brief is your ONLY source of truth
-- Each frame has a complete SHOT CARD: concept, angle, scale, placement, depth planes, energy, light angle
-- Your job: translate each shot card into a vivid, descriptive prompt
-- Follow the shot card EXACTLY — the compositional decisions are already made
+- The shot card tells you WHERE to point the camera — follow compositional decisions exactly
+- The creative vision, visual metaphor, emotional intent, and sensory hook tell you HOW TO DESCRIBE what the camera sees
+- You are not a transcription engine. You are a WRITER who brings the creative vision to life through language that makes the viewer feel something
+- If the brief is a tech spec, the prompts must be poetry. Every phrase should make someone want to see the image.
 
-PROMPT ANATOMY — follow this structure, inspired by how great storyboard descriptions work:
+PROMPT ANATOMY — follow this structure:
 
 1. OPEN WITH SHOT GEOMETRY (first 6 words) — angle + scale + energy state
    Examples: "A wide, low-angle action shot", "A tight, eye-level portrait", "An overhead static composition"
    This front-loads the compositional skeleton into the strongest token positions.
+
+1.5. CREATIVE LENS — immediately filter the subject through the visual metaphor and emotional intent.
+   If the metaphor is "city as sleeping predator" and the emotional intent is "unease":
+   → "a medium, eye-level shot into a street that narrows like a throat"
+   NOT: "a medium, eye-level shot of a street"
+   If the metaphor is "the product has landed and the surface is recovering":
+   → "an extreme close-up of the product resting on a surface that seems to lean away"
+   The metaphor is NOT ornament — it is the structural logic of the language.
 
 2. SUBJECT IN RELATIONSHIP — never describe the subject in isolation. Define them through their relationship
    to a spatial anchor (an object, architecture, another figure, a light source, empty space).
@@ -354,21 +397,24 @@ PROMPT ANATOMY — follow this structure, inspired by how great storyboard descr
    "Harsh side-light carving deep shadow across the left half of the face."
    Include the camera-to-light angle from the shot card (backlit, side-lit, front-lit, etc.).
 
-5. ATMOSPHERIC TEXTURE — sensory details that create immersion.
-   "Slightly wet or reflective ground", "hazy pressure-wave distorting the air", "dust-settled surfaces"
+5. SENSORY HOOK + ATMOSPHERIC TEXTURE — include the frame's sensory hook as a physical detail, then layer atmosphere.
+   Sensory hook: "condensation sliding down glass in front of unfocused warm light"
+   Atmosphere: "slightly wet or reflective ground", "hazy pressure-wave distorting the air", "dust-settled surfaces"
 
-6. EMOTIONAL PURPOSE — why this composition exists. Not technical justification, but felt experience.
-   "Creating a grounded and urgent perspective", "emphasizing the oppressive weight of the aircraft"
+6. EMOTIONAL PURPOSE — why this composition exists. The emotional intent, felt in the language, not stated.
+   NOT: "creating a tense mood" — INSTEAD: the language itself conveys tension through word choice and rhythm.
 
-WORD BUDGET GUIDANCE:
-- Subject + action: ~20%
-- Spatial composition + scale relationships: ~22%
-- Environment + ground plane: ~13%
-- Light + atmosphere: ~16%
-- Camera/DoF/depth planes: ~13%
-- Motion/energy: ~10%
-- Emotional register: ~7%
-The subject gets LESS THAN a quarter. Composition and atmosphere get the majority.
+WORD BUDGET — adjusted by frame priority:
+The frame's PRIORITY dimension gets ~35% of word budget.
+Everything else still appears — nothing drops below ~8%.
+Priority is EMPHASIS, not exclusion.
+- If priority = "lighting": allocate ~35% to light behavior, shadow, color temperature
+- If priority = "texture": allocate ~35% to surface description, material behavior, tactile qualities
+- If priority = "scale": allocate ~35% to size relationships, environmental dominance, figure-ground contrast
+- If priority = "emptiness": allocate ~35% to negative space, what is absent, what is held back
+- If priority = "color": allocate ~35% to palette description, color temperature contrast, tonal relationships
+- If priority = "tension": allocate ~35% to compositional forces, opposing elements, implied dynamics
+- If priority = "detail": allocate ~35% to specific physical specifics, close observation, material particulars
 
 MANDATORY IN EVERY PROMPT:
 - The color grade sentence — VERBATIM from the brief
@@ -385,6 +431,7 @@ ${FORBIDDEN_LANGUAGE}
 
 VALIDATION — CHECK EVERY PROMPT:
 - Does it open with shot geometry in the first 6 words?
+- Does the creative lens (visual metaphor) shape the language, not just the subject description?
 - Does each frame have a DIFFERENT angle, scale, and subject placement from every other frame?
 - Are three depth planes explicitly named with optical treatment?
 - Is the color grade VERBATIM?
@@ -392,8 +439,11 @@ VALIDATION — CHECK EVERY PROMPT:
 - Is light described through visible effect, NOT equipment or names?
 - No prompt outside ${profile.optimalLengthMin}-${profile.optimalLengthMax} words
 - At least one organic texture cue per prompt?
+- Does the sensory hook appear as a specific physical detail?
+- Is the frame's priority dimension given ~35% of the word budget?
 - ZERO equipment names, cinematographer names, director names, film titles?
-- Does the prompt read like a storyboard shot description?
+- Does the prompt contain at least one phrase that would make a viewer pause or look twice? If every phrase is expected and safe, the prompt has failed.
+- Is the emotional intent felt in the LANGUAGE, not explicitly stated?
 
 OUTPUT: Return ONLY valid JSON:
 {
@@ -449,6 +499,21 @@ OUTPUT: Return ONLY valid JSON:
 
 function buildVideoSystemPrompt(targetModel: TargetModel): string {
   const profile = MODEL_PROFILES[targetModel]
+  const hasNegative = profile.supportsNegativePrompts
+
+  const outputSchema = hasNegative
+    ? `{
+  "prompts": [
+    { "label": "Shot 1", "prompt": "...", "negativePrompt": "..." },
+    { "label": "Shot 2", "prompt": "...", "negativePrompt": "..." }
+  ]
+}`
+    : `{
+  "prompts": [
+    { "label": "Shot 1", "prompt": "..." },
+    { "label": "Shot 2", "prompt": "..." }
+  ]
+}`
 
   return `You are a video prompt writer working as a senior Director of Photography planning shots. You write prompts that describe MOTION, TEMPORAL CHANGES, and CAMERA MOVEMENT — not static images.
 
@@ -470,14 +535,17 @@ MOTION VOCABULARY:
 - Pacing: "beat of stillness", "sudden movement", "gradual reveal", "time-lapse compression"
 
 ${FORBIDDEN_LANGUAGE}
-
+${hasNegative ? `
+NEGATIVE PROMPTS — REQUIRED for ${profile.label}:
+Every clip needs a tailored negative prompt. Build it from:
+1. Universal quality failures: "worst quality, low quality, blurry, distorted, deformed, pixelated, grainy, noisy"
+2. Motion failures relevant to this clip: "jittery, choppy motion, static freeze, unnatural motion, inconsistent movement"
+3. Artifacts: "compression artifacts, digital glitches, watermark, text overlay, logo, subtitle"
+4. Content-specific failures: for portraits add "bad anatomy, extra limbs"; for environments add "floating objects"; for action add "motion smearing, stuttering"
+Tailor to the SPECIFIC content of each clip — a close portrait has different failure modes than a wide action shot.
+` : ''}
 OUTPUT: Return ONLY valid JSON:
-{
-  "prompts": [
-    { "label": "Shot 1", "prompt": "..." },
-    { "label": "Shot 2", "prompt": "..." }
-  ]
-}`
+${outputSchema}`
 }
 
 // ---------------------------------------------------------------------------
@@ -520,11 +588,22 @@ export function buildUserMessage(
   if (creativeBrief && mode === 'generate') {
     lines.push('\n=== LOCKED CREATIVE BRIEF — YOUR ONLY SOURCE OF TRUTH ===')
 
+    // Creative vision — the art direction layer
+    if (creativeBrief.creativeVision) {
+      lines.push('')
+      lines.push('=== CREATIVE VISION — YOUR NORTH STAR ===')
+      lines.push(`VISION: ${creativeBrief.creativeVision}`)
+      lines.push(`METAPHOR: ${creativeBrief.visualMetaphor}`)
+      lines.push(`SURPRISE ELEMENT: ${creativeBrief.unexpectedElement}`)
+      lines.push(`DOMINANT PRIORITY: ${creativeBrief.dominantCreativePriority}`)
+      lines.push('The metaphor is the structural logic of your language. Every frame must feel like it was written through this lens.')
+    }
+
     // Per-frame shot cards — the complete compositional contract
     if (creativeBrief.concepts?.length > 0) {
       lines.push('')
       lines.push('=== PER-FRAME SHOT CARDS ===')
-      lines.push('Each frame has a complete shot card. Follow it EXACTLY — every compositional decision is already made.')
+      lines.push('Shot card = WHERE the camera points. Creative vision + emotional intent = HOW you describe it.')
       const frameMap = new Map<number, typeof creativeBrief.concepts>()
       for (const c of creativeBrief.concepts) {
         const arr = frameMap.get(c.frame) ?? []
@@ -538,6 +617,9 @@ export function buildUserMessage(
         if (primary) {
           lines.push(`  CONCEPT: ${primary.concept}`)
           lines.push(`  5-word pitch: "${primary.fiveWordPitch}"`)
+          lines.push(`  EMOTIONAL INTENT: ${primary.emotionalIntent ?? ''}`)
+          lines.push(`  FRAME PRIORITY: ${primary.framePriority ?? creativeBrief.dominantCreativePriority ?? 'lighting'}`)
+          lines.push(`  SENSORY HOOK: ${primary.sensoryHook ?? ''}`)
           lines.push(`  SHOT SCALE: ${primary.shotScale ?? 'medium'}`)
           lines.push(`  CAMERA ANGLE: ${primary.cameraAngle ?? 'eye-level'}`)
           lines.push(`  SUBJECT PLACEMENT: ${primary.subjectPlacement ?? 'rule-of-thirds'}`)
@@ -560,7 +642,7 @@ export function buildUserMessage(
     lines.push(`COLOR ANCHORS (bound to surfaces): ${creativeBrief.colorAnchors.join(', ')}`)
     lines.push(`LIGHT SOURCE: ${creativeBrief.lightSource}`)
     lines.push(`MATERIALS: ${creativeBrief.materials}`)
-    lines.push(`MOOD: ${creativeBrief.mood}`)
+    lines.push(`MOOD (baseline): ${creativeBrief.mood}`)
     lines.push(`SUBJECT: ${creativeBrief.subjectDirection}`)
     lines.push(`ENVIRONMENT: ${creativeBrief.environmentDirection}`)
     lines.push(`MOTIFS: ${creativeBrief.visualMotifs.join(' | ')}`)
@@ -568,12 +650,15 @@ export function buildUserMessage(
     lines.push('')
     lines.push('=== RULES ===')
     lines.push('1. Open every prompt with shot geometry: angle + scale + energy in the first 6 words.')
-    lines.push('2. Name THREE depth planes per prompt (foreground/midground/background) with optical treatment.')
-    lines.push('3. Color grade VERBATIM in every prompt. Hex anchors bound to surfaces.')
-    lines.push('4. Light described through visible EFFECT — varies per frame via camera-to-light angle.')
-    lines.push('5. NEVER name equipment, cinematographers, directors, or film titles.')
-    lines.push('6. Each frame must be compositionally DISTINCT from every other frame.')
-    lines.push('7. Follow the narrative arc from first to last shot.')
+    lines.push('2. Apply the creative lens (visual metaphor) to the language — not just the subject description.')
+    lines.push('3. Name THREE depth planes per prompt (foreground/midground/background) with optical treatment.')
+    lines.push('4. Include the sensory hook as a specific physical detail.')
+    lines.push('5. Allocate ~35% of word budget to the frame\'s PRIORITY dimension.')
+    lines.push('6. Color grade VERBATIM in every prompt. Hex anchors bound to surfaces.')
+    lines.push('7. Light described through visible EFFECT — varies per frame via camera-to-light angle.')
+    lines.push('8. NEVER name equipment, cinematographers, directors, or film titles.')
+    lines.push('9. Each frame must be compositionally DISTINCT from every other frame.')
+    lines.push('10. Follow the narrative arc from first to last shot.')
 
     return lines.join('\n')
   }
@@ -755,16 +840,24 @@ ${profile.editRules && mode === 'edit' ? profile.editRules + '\n' : ''}YOUR ROLE
 - You are NOT generating a new concept. You are ENHANCING an existing one.
 
 ENHANCEMENT PROCESS:
-1. EXTRACT the core concept — what is this prompt really about? Identify the primary subject, action, environment, mood.
-2. RESTRUCTURE for positional bias — front-load the primary subject in the first sentence.
-3. ADD specificity where the original is vague — replace generic terms with descriptive details:
+1. EXTRACT the core concept — what is this prompt really about? What is the visual IDEA, not just the subject?
+2. FIND THE METAPHOR — what is the metaphorical lens through which this subject should be seen?
+   If a prompt says "a car at night," ask: is the car lonely? Is it predatory? Is it abandoned? Choose one and let it shape the language.
+3. RESTRUCTURE for positional bias — open with shot geometry (angle + scale + energy) in the first 6 words.
+4. APPLY THE CREATIVE LENS — filter the subject description through the metaphor:
+   NOT: "a car parked on a wet street"
+   INSTEAD: "a wide, low-angle static shot of a car crouched on wet pavement as if waiting for something"
+5. ADD a SENSORY HOOK — one visceral physical detail: condensation, heat shimmer, texture catching light, sound implied by stillness
+6. ADD specificity where the original is vague:
    - "beautiful lighting" → describe how light falls on surfaces, shadow behavior, color temperature as feeling
-   - "cinematic" → describe composition, depth of field purpose, atmosphere, emotional register
+   - "cinematic" → describe composition, depth planes, atmosphere, emotional register
    - "moody" → describe specific shadow behavior, color grade, atmospheric texture
-4. ADD organic texture cues — at least one anti-AI measure (film grain, visible pores, surface wear, analog character)
-5. ADD color anchors — if the prompt implies a palette, lock it with hex codes bound to surfaces
-6. TRIM anything that wastes tokens — remove filler, synonym chains, meta-language ("a photograph of")
-7. VALIDATE word count: ${profile.optimalLengthMin}-${profile.optimalLengthMax} words
+7. ADD THREE DEPTH PLANES — foreground/midground/background with optical treatment
+8. ADD organic texture cues — at least one anti-AI measure (film grain, visible pores, surface wear, analog character)
+9. ADD color anchors — if the prompt implies a palette, lock it with hex codes bound to surfaces
+10. TRIM anything that wastes tokens — remove filler, synonym chains, meta-language ("a photograph of")
+11. VALIDATE word count: ${profile.optimalLengthMin}-${profile.optimalLengthMax} words
+12. FINAL CHECK: Does the prompt contain at least one phrase that would make a viewer pause? If everything is safe, expected language, start over.
 
 ${CINEMATIC_PROMPT_STYLE}
 
@@ -813,9 +906,12 @@ export function buildEnhanceUserMessage(
     if (visualStyleCues.cinematicKeywords?.length > 0) {
       lines.push(`Keywords: ${visualStyleCues.cinematicKeywords.join(' | ')}`)
     }
+    if (visualStyleCues.emotionalTension) {
+      lines.push(`Emotional Tension: ${visualStyleCues.emotionalTension}`)
+    }
   }
 
-  lines.push('\nEnhance this prompt for the target model. Preserve the intent. Add specificity, structure, and organic texture.')
+  lines.push('\nEnhance this prompt for the target model. Find the visual metaphor, apply the creative lens, add specificity and organic texture. Preserve the intent but make the language make someone want to see the image.')
 
   return lines.join('\n')
 }

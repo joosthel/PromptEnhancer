@@ -22,6 +22,7 @@ export interface VisualStyleCues {
   description: string
   hexPalette: string[]
   cinematicKeywords: string[]
+  emotionalTension: string
 }
 
 /**
@@ -39,6 +40,9 @@ export interface ConceptAssignment {
   depthPlanes: string
   energyState: string
   cameraToLight: string
+  emotionalIntent: string
+  framePriority: string
+  sensoryHook: string
 }
 
 /**
@@ -46,6 +50,10 @@ export interface ConceptAssignment {
  * Every prompt is derived strictly from this document — zero creative drift.
  */
 export interface CreativeBrief {
+  creativeVision: string
+  visualMetaphor: string
+  unexpectedElement: string
+  dominantCreativePriority: string
   concepts: ConceptAssignment[]
   colorGrade: string
   colorAnchors: string[]
@@ -98,13 +106,20 @@ What physical qualities define the visual world?
 - Recurring shapes, patterns, or visual themes
 - Conceptual threads: isolation, intimacy, power, fragility, movement, stillness
 
+6. EMOTIONAL TENSION
+What is the primary emotional CONTRADICTION or TENSION across these images?
+Not a single emotion — the PULL BETWEEN two opposing qualities.
+Examples: "intimacy trapped in industrial scale", "warmth leaking through cold geometry", "stillness vibrating with implied violence"
+One sentence. This is the creative seed for downstream art direction.
+
 Write a ~500-word synthesis. Focus on WHAT THE IMAGES SHOW AND FEEL LIKE — their stories, spatial strategies, and atmosphere. Do NOT write a technical lighting spec.
 
-Return a JSON object with exactly these three fields:
+Return a JSON object with exactly these four fields:
 {
   "description": "your ~500-word synthesis of scenes, concepts, and visual language",
   "hexPalette": ["#XXXXXX", "#XXXXXX", "#XXXXXX", "#XXXXXX", "#XXXXXX"],
-  "cinematicKeywords": ["keyword phrase 1", "keyword phrase 2", ...]
+  "cinematicKeywords": ["keyword phrase 1", "keyword phrase 2", ...],
+  "emotionalTension": "the primary emotional contradiction — one sentence"
 }
 
 hexPalette rules:

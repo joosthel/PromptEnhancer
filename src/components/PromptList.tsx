@@ -7,7 +7,7 @@ import PromptCard from './PromptCard'
 import BatchActions from './BatchActions'
 
 interface PromptListProps {
-  prompts: Array<{ label: string; prompt: string }>
+  prompts: Array<{ label: string; prompt: string; negativePrompt?: string }>
   visualStyleCues?: VisualStyleCues
   creativeBrief?: CreativeBrief
   userInputs: UserInputs
@@ -205,9 +205,27 @@ export default function PromptList({
 
           {showBrief && (
             <div className="px-4 pb-4 space-y-3 border-t border-neutral-100">
-              {/* Concept hierarchy */}
+              {/* Creative Vision — shown prominently at top */}
+              {creativeBrief.creativeVision && (
+                <div className="pt-3 space-y-2 pb-3 border-b border-neutral-100">
+                  <p className="text-xs text-neutral-800 leading-relaxed font-medium italic">&ldquo;{creativeBrief.creativeVision}&rdquo;</p>
+                  {creativeBrief.visualMetaphor && (
+                    <p className="text-[11px] text-neutral-500 leading-relaxed">{creativeBrief.visualMetaphor}</p>
+                  )}
+                  <div className="flex flex-wrap gap-1.5 pt-1">
+                    {creativeBrief.unexpectedElement && (
+                      <span className="text-[10px] px-2 py-0.5 bg-neutral-800 text-neutral-200 rounded-sm">↯ {creativeBrief.unexpectedElement}</span>
+                    )}
+                    {creativeBrief.dominantCreativePriority && (
+                      <span className="text-[10px] px-2 py-0.5 bg-neutral-100 text-neutral-500 rounded-sm font-mono uppercase tracking-wide">{creativeBrief.dominantCreativePriority}</span>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Shot Cards */}
               {creativeBrief.concepts?.length > 0 && (
-                <div className="pt-3 space-y-3">
+                <div className="pt-1 space-y-3">
                   <span className="text-[10px] uppercase tracking-widest text-neutral-400">Shot Cards</span>
                   {Array.from(new Set(creativeBrief.concepts.map(c => c.frame))).sort((a, b) => a - b).map(frame => {
                     const frameConcepts = creativeBrief.concepts.filter(c => c.frame === frame)
@@ -225,6 +243,12 @@ export default function PromptList({
                               </div>
                               {primary.subjectPlacement && (
                                 <div className="text-neutral-400 text-[11px]">{primary.subjectPlacement}</div>
+                              )}
+                              {primary.emotionalIntent && (
+                                <div className="text-neutral-500 text-[11px] italic">{primary.emotionalIntent}</div>
+                              )}
+                              {primary.sensoryHook && (
+                                <div className="text-neutral-400 text-[11px] font-mono">{primary.sensoryHook}</div>
                               )}
                             </>
                           )}
@@ -321,6 +345,11 @@ export default function PromptList({
                   ))}
                 </div>
               )}
+              {visualStyleCues.emotionalTension && (
+                <p className="text-[11px] text-neutral-500 italic border-l-2 border-neutral-200 pl-2">
+                  {visualStyleCues.emotionalTension}
+                </p>
+              )}
               <p className="text-xs text-neutral-600 leading-relaxed whitespace-pre-line">
                 {visualStyleCues.description}
               </p>
@@ -335,6 +364,7 @@ export default function PromptList({
             key={i}
             label={p.label}
             prompt={p.prompt}
+            negativePrompt={p.negativePrompt}
             index={i}
             activeModel={activeModel}
             activeMode={activeMode}

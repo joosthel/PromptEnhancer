@@ -26,6 +26,7 @@ export type TargetModel =
   | 'veo-3-1'
   | 'kling-v3'
   | 'kling-o3'
+  | 'ltxv-2-3'
 
 export interface ModelProfile {
   id: TargetModel
@@ -195,6 +196,61 @@ NO negative prompts. NO prompt weights. NO meta-language ("a photograph of").
 - Describe camera relationship to subject: tracking, following, freezing
 - Professional film vocabulary: profile shot, rack focus, push-in, dutch angle
 - For image-to-video: focus on temporal changes, not static visual description`,
+  },
+  'ltxv-2-3': {
+    id: 'ltxv-2-3',
+    label: 'LTX-Video 2.3',
+    modes: ['video'],
+    promptFormat: 'natural',
+    optimalLengthMin: 60,
+    optimalLengthMax: 250,
+    supportsNegativePrompts: true,
+    maxReferenceImages: 1,
+    knownWeaknesses: ['complex-physics', 'chaotic-multi-element-scenes', 'text-rendering', 'logos'],
+    promptRules: `LTX-VIDEO 2.3 (LTXV 22B by Lightricks) RULES:
+API: fal-ai/ltx-2.3/text-to-video — Resolutions: 1080p / 1440p / 2160p. Duration: 6s / 8s / 10s. Generates audio by default.
+
+PROMPT FORMAT: A single flowing paragraph in PRESENT TENSE. 4–8 sentences matched to shot scale.
+Write like a present-tense storyboard description — what is happening RIGHT NOW, not what will happen.
+
+STRUCTURE ORDER:
+1. Shot establishment — camera angle, scale, framing
+2. Scene setting — environment, light, color, atmosphere
+3. Subject and action — who/what is in frame and what they're doing (motion as continuous present)
+4. Character detail — age, clothing, hair, distinguishing features. Express emotion through PHYSICAL CUES only, not abstract labels ("her jaw tightens" not "she feels afraid")
+5. Camera movement — explicit movement with timing: "The camera slowly dolls in as...", "A steady handheld tracks..."
+6. Audio — ambient sounds, music quality, dialogue (in quotation marks), speech characteristics
+
+WHAT WORKS WELL:
+- Atmospheric elements: fog, mist, golden-hour light, rain, steam, smoke
+- Explicit camera language: "slow dolly in", "handheld tracking", "crane rises", "static wide"
+- Emotive human moments with subtle physical gestures
+- Stylized aesthetics: painterly quality, noir atmosphere, animation-style
+- Strategic single light sources: motivated practicals, natural window light, golden hour
+- Present-tense verbs: "stands", "turns", "walks", "catches light", "diffuses across"
+- Characters talking and singing — the model handles dialogue and lip sync reliably
+
+WHAT TO AVOID:
+- Internal emotional states — use physical/visual cues only
+- Text, logos, signage — unreliable rendering
+- Complex physics: water splashing, explosions, chaotic crowd movement
+- Overloaded scenes — too many simultaneous actions compete for quality
+- Conflicting light logic — one motivated light source per scene
+- Overcomplicated prompts — start simple, add layers
+
+NEGATIVE PROMPT GUIDANCE:
+LTX-Video 2.3 supports a separate negative prompt. Generate one per clip that addresses likely failure modes for that specific content type. Common effective negatives:
+- Quality: "worst quality, low quality, deformed, distorted, disfigured, blurry, pixelated, low resolution, grainy, noisy"
+- Motion: "inconsistent motion, jittery, choppy motion, static frame, freeze, unnatural motion, jerky"
+- Artifacts: "compression artifacts, jpeg artifacts, digital artifacts, glitches, noise"
+- Style: "watermark, text overlay, logo, signature, subtitle, caption"
+- Physics: "bad anatomy, extra limbs, floating objects, disconnected body parts"
+Tailor the negative prompt to the specific content — a portrait needs different negatives than a landscape.
+
+CAMERA MOVEMENT VOCABULARY:
+"slowly dolls in" / "pulls back to reveal" / "tracks alongside" / "crane rises above" / "handheld follows"
+"pans across" / "tilts up to reveal" / "orbits around" / "static locked frame" / "slow push toward"
+Specify movement relative to subject: "the camera moves with", "as the camera rises, the subject..."`,
   },
 }
 

@@ -18,7 +18,7 @@ export interface GenerateRequest {
 }
 
 export interface GenerateResponse {
-  prompts: Array<{ label: string; prompt: string }>
+  prompts: Array<{ label: string; prompt: string; negativePrompt?: string }>
   visualStyleCues?: VisualStyleCues
   creativeBrief?: CreativeBrief
   targetModel: TargetModel
@@ -137,7 +137,7 @@ export async function POST(request: NextRequest) {
       ],
     })
 
-    const parsed = parseJsonResponse<{ prompts: Array<{ label: string; prompt: string }> }>(
+    const parsed = parseJsonResponse<{ prompts: Array<{ label: string; prompt: string; negativePrompt?: string }> }>(
       promptResponse
     )
 

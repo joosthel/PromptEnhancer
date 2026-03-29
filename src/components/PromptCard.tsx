@@ -9,6 +9,7 @@ import ModelChips from './ModelChips'
 interface PromptCardProps {
   label: string
   prompt: string
+  negativePrompt?: string
   index: number
   activeModel: TargetModel
   activeMode: GenerationMode
@@ -25,6 +26,7 @@ interface PromptCardProps {
 export default function PromptCard({
   label,
   prompt,
+  negativePrompt,
   index,
   activeModel,
   activeMode,
@@ -38,6 +40,7 @@ export default function PromptCard({
   reformatLoadingModel,
 }: PromptCardProps) {
   const [copied, setCopied] = useState(false)
+  const [copiedNeg, setCopiedNeg] = useState(false)
   const [fixOpen, setFixOpen] = useState(false)
 
   async function handleCopy() {
@@ -54,6 +57,24 @@ export default function PromptCard({
       document.body.removeChild(textarea)
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
+    }
+  }
+
+  async function handleCopyNeg() {
+    if (!negativePrompt) return
+    try {
+      await navigator.clipboard.writeText(negativePrompt)
+      setCopiedNeg(true)
+      setTimeout(() => setCopiedNeg(false), 2000)
+    } catch {
+      const textarea = document.createElement('textarea')
+      textarea.value = negativePrompt
+      document.body.appendChild(textarea)
+      textarea.select()
+      document.execCommand('copy')
+      document.body.removeChild(textarea)
+      setCopiedNeg(true)
+      setTimeout(() => setCopiedNeg(false), 2000)
     }
   }
 
@@ -90,6 +111,22 @@ export default function PromptCard({
 
       {/* Prompt text */}
       <p className="text-sm text-neutral-700 leading-relaxed">{prompt}</p>
+
+      {/* Negative prompt */}
+      {negativePrompt && (
+        <div className="mt-3 pt-3 border-t border-neutral-100">
+          <div className="flex items-center justify-between mb-1">
+            <span className="text-[10px] uppercase tracking-widest text-neutral-400">Negative</span>
+            <button
+              onClick={handleCopyNeg}
+              className="text-[10px] px-1.5 py-0.5 text-neutral-400 hover:text-neutral-600 transition-colors"
+            >
+              {copiedNeg ? 'Copied' : 'Copy'}
+            </button>
+          </div>
+          <p className="text-xs text-neutral-400 leading-relaxed">{negativePrompt}</p>
+        </div>
+      )}
 
       {/* Fix toolbar */}
       {fixOpen && (

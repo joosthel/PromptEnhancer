@@ -11,7 +11,7 @@ import { UserInputs, VisualStyleCues, ImageLabel, CreativeBrief } from '@/lib/sy
 import { TargetModel, GenerationMode, DEFAULT_MODEL, DEFAULT_MODE, getDefaultModelForMode } from '@/lib/model-profiles'
 
 interface GenerateResult {
-  prompts: Array<{ label: string; prompt: string }>
+  prompts: Array<{ label: string; prompt: string; negativePrompt?: string }>
   visualStyleCues?: VisualStyleCues
   creativeBrief?: CreativeBrief
 }
