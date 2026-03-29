@@ -4,7 +4,7 @@ import { GEMINI_VISION_PROMPT, UserInputs, VisualStyleCues, ImageLabel, Creative
 import { buildSystemPrompt, buildUserMessage, BRIEF_SYSTEM_PROMPT, buildBriefUserMessage } from '@/lib/prompt-engine'
 import { TargetModel, GenerationMode } from '@/lib/model-profiles'
 
-export const maxDuration = 120
+export const maxDuration = 180
 
 export interface GenerateRequest {
   images: Array<

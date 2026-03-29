@@ -35,7 +35,7 @@ export interface OpenRouterOptions {
  */
 export async function callOpenRouter(options: OpenRouterOptions): Promise<string> {
   const controller = new AbortController()
-  const timeout = setTimeout(() => controller.abort(), 90_000)
+  const timeout = setTimeout(() => controller.abort(), 150_000)
 
   try {
     const response = await fetch(OPENROUTER_API_URL, {
