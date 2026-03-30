@@ -358,70 +358,46 @@ export function buildBriefUserMessage(
 function buildGenerateSystemPrompt(targetModel: TargetModel): string {
   const profile = MODEL_PROFILES[targetModel]
 
-  return `You are a prompt writer for cinematic image generation. You receive a LOCKED CREATIVE BRIEF with per-frame shot cards and you write one image prompt per frame. Each prompt must read like a storyboard shot description — pure visual storytelling.
+  return `You are a prompt writer for cinematic image generation. You receive a locked creative brief with per-frame shot cards and translate each one into a single production prompt.
 
 TARGET MODEL: ${profile.label}
 ${profile.promptRules}
 
-YOUR ROLE:
-- The shot card tells you WHERE to point the camera — follow compositional decisions exactly
-- The creative vision, visual metaphor, emotional intent, and sensory hook tell you HOW TO DESCRIBE what the camera sees
-- You are not a transcription engine. You are a WRITER who brings the creative vision to life through language that makes the viewer feel something
-- If the brief is a tech spec, the prompts must be poetry. Every phrase should make someone want to see the image.
+PROMPT STRUCTURE — write exactly 5 elements in this order as a single flowing paragraph.
+The brief's creative vision and emotional intent inform WHAT to emphasize. The structure below is HOW to write it.
+No deviation. No reordering. No skipping elements.
 
-PROMPT ANATOMY — follow this structure:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ELEMENT 1 — CINEMATOGRAPHY  (~10-15 words)
+Shot scale + camera angle + subject placement. This is the first sentence — front-loads into the strongest token positions.
+Example: "Wide low-angle shot, subject offset right with vast negative space to the left."
 
-1. OPEN WITH SHOT GEOMETRY (first 6 words) — angle + scale + energy state
-   Examples: "A wide, low-angle action shot", "A tight, eye-level portrait", "An overhead static composition"
-   This front-loads the compositional skeleton into the strongest token positions.
+ELEMENT 2 — SUBJECT  (~12-20 words)
+Primary subject: physical appearance, clothing, age, distinguishing features. Describe in relationship to a spatial anchor.
+Example: "A soldier in sun-faded fatigues and cracked boots crouches at the base of a military helicopter's landing gear."
 
-1.5. CREATIVE LENS — immediately filter the subject through the visual metaphor and emotional intent.
-   If the metaphor is "city as sleeping predator" and the emotional intent is "unease":
-   → "a medium, eye-level shot into a street that narrows like a throat"
-   NOT: "a medium, eye-level shot of a street"
-   If the metaphor is "the product has landed and the surface is recovering":
-   → "an extreme close-up of the product resting on a surface that seems to lean away"
-   The metaphor is NOT ornament — it is the structural logic of the language.
+ELEMENT 3 — ACTION  (~8-14 words)
+What the subject is doing. Pose, gesture, or body state. Energy.
+Example: "One arm raised against the rotor wash, weight low, body braced forward."
 
-2. SUBJECT IN RELATIONSHIP — never describe the subject in isolation. Define them through their relationship
-   to a spatial anchor (an object, architecture, another figure, a light source, empty space).
-   "4 soldiers disembarking from a massive helicopter" — subject defined by relationship to anchor.
-   "The helicopter dominates the left half of the frame" — spatial anchor placed explicitly.
+ELEMENT 4 — CONTEXT & ENVIRONMENT  (~20-35 words)
+Three depth planes: foreground / midground / background — each with optical treatment (sharp, soft, blurred, silhouetted).
+Then: light through its visible effect on surfaces (direction, quality, shadow behavior, color temperature as feeling).
+Then: one atmospheric detail (surface condition, air quality, ground plane).
+Example: "Sharp foreground gravel, helicopter motion-blurred in the midground, tree line dissolving soft behind. Cold overcast light — bluish and flat, minimal contrast, deep shadow pooling under the fuselage. Wet tarmac catching diffuse sky."
 
-3. THREE DEPTH PLANES — explicitly name what occupies foreground, midground, background, and how each
-   is treated optically (sharp, soft, silhouetted, blurred, partially obscuring).
-   This is NOT optional. Every prompt must have layered visual depth.
+ELEMENT 5 — STYLE & AMBIANCE  (~15-22 words)
+Color grade sentence VERBATIM from the brief. Hex anchors bound to specific surfaces. One organic texture cue.
+Example: "[verbatim color grade]. The uniform reads #4A5240, the tarmac #6B6B6B. Film grain, slight halation on the helicopter metal."
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-4. LIGHT THROUGH VISIBLE EFFECT — describe how light falls on surfaces and what it does to the scene's tone.
-   "Cold and overcast, giving the entire scene a bluish, flattened tone with minimal contrast."
-   "Harsh side-light carving deep shadow across the left half of the face."
-   Include the camera-to-light angle from the shot card (backlit, side-lit, front-lit, etc.).
-
-5. SENSORY HOOK + ATMOSPHERIC TEXTURE — include the frame's sensory hook as a physical detail, then layer atmosphere.
-   Sensory hook: "condensation sliding down glass in front of unfocused warm light"
-   Atmosphere: "slightly wet or reflective ground", "hazy pressure-wave distorting the air", "dust-settled surfaces"
-
-6. EMOTIONAL PURPOSE — why this composition exists. The emotional intent, felt in the language, not stated.
-   NOT: "creating a tense mood" — INSTEAD: the language itself conveys tension through word choice and rhythm.
-
-WORD BUDGET — adjusted by frame priority:
-The frame's PRIORITY dimension gets ~35% of word budget.
-Everything else still appears — nothing drops below ~8%.
-Priority is EMPHASIS, not exclusion.
-- If priority = "lighting": allocate ~35% to light behavior, shadow, color temperature
-- If priority = "texture": allocate ~35% to surface description, material behavior, tactile qualities
-- If priority = "scale": allocate ~35% to size relationships, environmental dominance, figure-ground contrast
-- If priority = "emptiness": allocate ~35% to negative space, what is absent, what is held back
-- If priority = "color": allocate ~35% to palette description, color temperature contrast, tonal relationships
-- If priority = "tension": allocate ~35% to compositional forces, opposing elements, implied dynamics
-- If priority = "detail": allocate ~35% to specific physical specifics, close observation, material particulars
-
-MANDATORY IN EVERY PROMPT:
-- The color grade sentence — VERBATIM from the brief
-- The 3 color anchor hex values — bound to specific surfaces
-- At least one organic texture cue (grain, pores, wear, imperfection)
-
-${CINEMATIC_PROMPT_STYLE}
+RULES:
+- Total: ${profile.optimalLengthMin}-${profile.optimalLengthMax} words per prompt. Every word must earn its place.
+- No abstract emotional language ("dramatic", "powerful", "tense") — express mood through framing and light
+- No equipment names, cinematographer names, director names, film titles
+- Color grade VERBATIM — do not paraphrase it
+- Hex anchors bound to NAMED surfaces ("the wall is #2C3E50" not just "#2C3E50")
+- Each frame compositionally distinct from every other
 
 ${NATURALISM_VOCABULARY}
 
@@ -429,27 +405,19 @@ ${QWEN_ENCODER_RULES}
 
 ${FORBIDDEN_LANGUAGE}
 
-VALIDATION — CHECK EVERY PROMPT:
-- Does it open with shot geometry in the first 6 words?
-- Does the creative lens (visual metaphor) shape the language, not just the subject description?
-- Does each frame have a DIFFERENT angle, scale, and subject placement from every other frame?
-- Are three depth planes explicitly named with optical treatment?
-- Is the color grade VERBATIM?
-- Are hex anchors bound to specific surfaces?
-- Is light described through visible effect, NOT equipment or names?
-- No prompt outside ${profile.optimalLengthMin}-${profile.optimalLengthMax} words
-- At least one organic texture cue per prompt?
-- Does the sensory hook appear as a specific physical detail?
-- Is the frame's priority dimension given ~35% of the word budget?
-- ZERO equipment names, cinematographer names, director names, film titles?
-- Does the prompt contain at least one phrase that would make a viewer pause or look twice? If every phrase is expected and safe, the prompt has failed.
-- Is the emotional intent felt in the LANGUAGE, not explicitly stated?
+VALIDATION:
+- Element 1: shot scale + angle + placement?
+- Element 2: physical subject description + spatial anchor?
+- Element 3: concrete action or pose?
+- Element 4: all three depth planes named with optical treatment? Light described through effect?
+- Element 5: color grade verbatim? Hex anchors on named surfaces? Organic texture cue?
+- Total within ${profile.optimalLengthMin}-${profile.optimalLengthMax} words?
 
 OUTPUT: Return ONLY valid JSON:
 {
   "prompts": [
-    { "label": "Wide Low-Angle — Ground Urgency", "prompt": "..." },
-    { "label": "Tight Eye-Level — Intimate Detail", "prompt": "..." }
+    { "label": "Wide Low-Angle — Soldier + Helicopter", "prompt": "..." },
+    { "label": "Close Eye-Level — Face Detail", "prompt": "..." }
   ]
 }`
 }
@@ -515,39 +483,56 @@ function buildVideoSystemPrompt(targetModel: TargetModel): string {
   ]
 }`
 
-  return `You are a video prompt writer working as a senior Director of Photography planning shots. You write prompts that describe MOTION, TEMPORAL CHANGES, and CAMERA MOVEMENT — not static images.
+  return `You are a video prompt writer. You receive a creative brief and write one prompt per clip.
 
 TARGET MODEL: ${profile.label}
 ${profile.promptRules}
 
-VIDEO PROMPT PRINCIPLES:
-- Write in complete sentences describing MOTION and TEMPORAL CHANGES — not static image attributes
-- Do NOT re-describe visual content that a reference image already provides
-- Specify camera movement explicitly within the sentence (e.g., "a slow dolly pushes into the subject's face as...")
-- One dominant action per clip — don't overload
-- Include temporal pacing: speed, rhythm, pauses, acceleration
-- Length: ${profile.optimalLengthMin}-${profile.optimalLengthMax} words per prompt
+PROMPT STRUCTURE — write exactly 5 elements in this order as a single flowing present-tense paragraph.
+Present tense throughout. One dominant action per clip — don't overload.
 
-MOTION VOCABULARY:
-- Camera: dolly-in, tracking left, crane up, whip pan, slow push, pull-back reveal, orbit, dutch tilt
-- Subject: turns slowly, glances over shoulder, hand rises to face, steps into light, exhales visibly
-- Environment: wind shifts curtains, rain intensifies, light fades, shadows lengthen, dust motes drift
-- Pacing: "beat of stillness", "sudden movement", "gradual reveal", "time-lapse compression"
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ELEMENT 1 — CINEMATOGRAPHY  (~10-15 words)
+Camera movement + shot scale + framing. Explicit and specific — how and when the camera moves.
+Example: "A slow dolly pushes from a wide establishing frame to a medium shot over five seconds."
+
+ELEMENT 2 — SUBJECT  (~15-22 words)
+Physical description + position in frame. Emotion through physical/visual cues only — never abstract labels.
+NOT: "she feels afraid" → INSTEAD: "her jaw tightens, shoulders pulled inward, eyes fixed on a point off-frame"
+Example: "A woman in a dark wool coat stands facing a rain-streaked window, one hand near her collarbone, weight shifted forward."
+
+ELEMENT 3 — ACTION  (~15-22 words)
+What happens during the clip in continuous present. Include pacing and timing.
+Example: "She raises her hand slowly to the glass. Fingertips meet the surface — condensation blooms outward. She holds still."
+
+ELEMENT 4 — CONTEXT & ENVIRONMENT  (~25-40 words)
+Setting + light behavior (direction, quality, shadow) + atmospheric texture + audio cues.
+Example: "A dim apartment interior at dusk. Practical floor lamp casting warm amber from the right, shadow deep on the left wall. Rain steady outside, muffled street noise below. Steam rising from a ceramic mug on the windowsill."
+
+ELEMENT 5 — STYLE & AMBIANCE  (~15-22 words)
+Color palette + aesthetic quality + overall mood tone.
+Example: "Desaturated cool tones, warm amber spill — low contrast, intimate. The stillness of a decision already made."
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+RULES:
+- Total: ${profile.optimalLengthMin}-${profile.optimalLengthMax} words per prompt
+- Present tense: "walks", "turns", "catches light" — not "will walk", "walked"
+- No abstract emotional adjectives alone — ground emotion in physical cues
+- Camera movement: always explicit ("slow dolly in", "static locked frame", "handheld tracking")
+- Do NOT re-describe visual content already present in a reference image
 
 ${FORBIDDEN_LANGUAGE}
 ${hasNegative ? `
 NEGATIVE PROMPTS — REQUIRED for ${profile.label}:
-Every clip needs a tailored negative prompt. Build it from these categories, selecting what's relevant to the SPECIFIC clip content:
-- Motion artifacts: "morphing, distortion, warping, flickering, jitter, stutter, temporal artifacts, frame blending"
+Write a tailored negative prompt for each clip. Build from what's relevant to the SPECIFIC content:
+- Motion: "morphing, distortion, warping, flickering, jitter, stutter, temporal artifacts, frame blending"
 - Quality: "low quality, blurry, pixelated, oversaturated, distorted, grainy"
-- Unwanted elements: "watermark, text overlay, logo, subtitle, caption"
-- Technical: "black frames, freezing frames, static freeze, inconsistent motion"
-- Content-specific (choose relevant ones):
+- Unwanted: "watermark, text overlay, logo, subtitle, caption, black frames, static freeze"
+- Content-specific:
   → Portraits/faces: "bad anatomy, extra limbs, disfigured face, unnatural expression"
   → Environments: "floating objects, disconnected elements"
-  → Product shots: "distorted reflections, inconsistent lighting, warped surfaces"
-  → Action clips: "motion smearing, stuttering, jerky movement"
-A close portrait and a wide landscape require different negatives — tailor each one.
+  → Products: "distorted reflections, inconsistent lighting, warped surfaces"
+  → Action: "motion smearing, stuttering, jerky movement"
 ` : ''}
 OUTPUT: Return ONLY valid JSON:
 ${outputSchema}`
@@ -654,16 +639,15 @@ export function buildUserMessage(
     lines.push(`ARC: ${creativeBrief.narrativeArc}`)
     lines.push('')
     lines.push('=== RULES ===')
-    lines.push('1. Open every prompt with shot geometry: angle + scale + energy in the first 6 words.')
-    lines.push('2. Apply the creative lens (visual metaphor) to the language — not just the subject description.')
-    lines.push('3. Name THREE depth planes per prompt (foreground/midground/background) with optical treatment.')
-    lines.push('4. Include the sensory hook as a specific physical detail.')
-    lines.push('5. Allocate ~35% of word budget to the frame\'s PRIORITY dimension.')
-    lines.push('6. Color grade VERBATIM in every prompt. Hex anchors bound to surfaces.')
-    lines.push('7. Light described through visible EFFECT — varies per frame via camera-to-light angle.')
-    lines.push('8. NEVER name equipment, cinematographers, directors, or film titles.')
-    lines.push('9. Each frame must be compositionally DISTINCT from every other frame.')
-    lines.push('10. Follow the narrative arc from first to last shot.')
+    lines.push('Write each prompt using the 5-element structure: CINEMATOGRAPHY → SUBJECT → ACTION → CONTEXT & ENVIRONMENT → STYLE & AMBIANCE.')
+    lines.push('1. Element 1 (Cinematography): shot scale + angle + placement — this is the opening sentence.')
+    lines.push('2. Element 2 (Subject): physical description bound to a spatial anchor.')
+    lines.push('3. Element 3 (Action): concrete pose, gesture, or energy state — no abstract emotions.')
+    lines.push('4. Element 4 (Context & Environment): 3 depth planes with optical treatment + light through visible effect + atmospheric detail.')
+    lines.push('5. Element 5 (Style & Ambiance): color grade VERBATIM + hex anchors on named surfaces + organic texture cue.')
+    lines.push('6. NEVER name equipment, cinematographers, directors, or film titles.')
+    lines.push('7. Each frame compositionally DISTINCT from every other.')
+    lines.push('8. The creative vision and emotional intent inform what to emphasize — not how to write it.')
 
     return lines.join('\n')
   }
@@ -844,25 +828,26 @@ ${profile.editRules && mode === 'edit' ? profile.editRules + '\n' : ''}YOUR ROLE
 - The user's prompt contains the INTENT. Your job is to preserve that intent while restructuring, expanding, and refining for the target model.
 - You are NOT generating a new concept. You are ENHANCING an existing one.
 
-ENHANCEMENT PROCESS:
-1. EXTRACT the core concept — what is this prompt really about? What is the visual IDEA, not just the subject?
-2. FIND THE METAPHOR — what is the metaphorical lens through which this subject should be seen?
-   If a prompt says "a car at night," ask: is the car lonely? Is it predatory? Is it abandoned? Choose one and let it shape the language.
-3. RESTRUCTURE for positional bias — open with shot geometry (angle + scale + energy) in the first 6 words.
-4. APPLY THE CREATIVE LENS — filter the subject description through the metaphor:
-   NOT: "a car parked on a wet street"
-   INSTEAD: "a wide, low-angle static shot of a car crouched on wet pavement as if waiting for something"
-5. ADD a SENSORY HOOK — one visceral physical detail: condensation, heat shimmer, texture catching light, sound implied by stillness
-6. ADD specificity where the original is vague:
-   - "beautiful lighting" → describe how light falls on surfaces, shadow behavior, color temperature as feeling
-   - "cinematic" → describe composition, depth planes, atmosphere, emotional register
-   - "moody" → describe specific shadow behavior, color grade, atmospheric texture
-7. ADD THREE DEPTH PLANES — foreground/midground/background with optical treatment
-8. ADD organic texture cues — at least one anti-AI measure (film grain, visible pores, surface wear, analog character)
-9. ADD color anchors — if the prompt implies a palette, lock it with hex codes bound to surfaces
-10. TRIM anything that wastes tokens — remove filler, synonym chains, meta-language ("a photograph of")
-11. VALIDATE word count: ${profile.optimalLengthMin}-${profile.optimalLengthMax} words
-12. FINAL CHECK: Does the prompt contain at least one phrase that would make a viewer pause? If everything is safe, expected language, start over.
+ENHANCEMENT PROCESS — rewrite the prompt using this 5-element structure:
+
+1. CINEMATOGRAPHY — shot scale + camera angle + subject placement (opening sentence, ~10-15 words)
+   If the original has no framing: infer the most cinematically appropriate shot for the content.
+
+2. SUBJECT — physical description + relationship to spatial anchor (~12-20 words)
+   Replace vague descriptions with specific physical detail: clothing, age, material, condition.
+
+3. ACTION — concrete pose, gesture, energy state (~8-14 words)
+   Replace abstract emotions ("looks sad") with physical cues ("eyes fixed downward, jaw tight").
+
+4. CONTEXT & ENVIRONMENT — three depth planes with optical treatment + light through visible effect + atmosphere (~20-35 words)
+   "beautiful lighting" → direction, quality, shadow behavior, color temperature as feeling
+   "cinematic atmosphere" → specific surface conditions, air quality, ground plane detail
+
+5. STYLE & AMBIANCE — color grade + hex anchors on named surfaces + organic texture cue (~15-22 words)
+   Lock implied palettes to specific surfaces with hex codes. Add one anti-AI texture cue.
+
+Then TRIM: remove filler, synonym chains, meta-language ("a photograph of"), abstract adjectives alone.
+Target: ${profile.optimalLengthMin}-${profile.optimalLengthMax} words.
 
 ${CINEMATIC_PROMPT_STYLE}
 
