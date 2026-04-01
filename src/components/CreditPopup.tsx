@@ -44,7 +44,7 @@ export default function CreditPopup({ open, onContinue, onCancel }: CreditPopupP
               This is a personal project by <span className="font-medium">Joost Helfers</span>. Every generation uses real API credits, funded personally.
             </p>
             <p className="text-sm text-neutral-500">
-              If you like the project, get in touch at{' '} and we can talk how I could help deploying somethig similar for you or your company. 
+              If you like the project, get in touch at{' '}
               <a
                 href="https://joosthelfers.com/"
                 target="_blank"
@@ -53,6 +53,7 @@ export default function CreditPopup({ open, onContinue, onCancel }: CreditPopupP
               >
                 joosthelfers.com
               </a>
+              {' '}and we can talk about how I could help deploy something similar for you or your company.
             </p>
           </div>
           <div className="flex gap-2">

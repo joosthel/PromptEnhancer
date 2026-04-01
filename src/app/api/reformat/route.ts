@@ -68,6 +68,10 @@ export async function POST(request: NextRequest) {
       model: 'deepseek/deepseek-v3.2',
       apiKey,
       responseFormat: 'json_object',
+      temperature: 0.3,
+      top_p: 0.8,
+      max_tokens: 2048,
+      stop: ['\n\n\n'],
       messages: [
         { role: 'system', content: buildReformatSystemPrompt(fromModel, toModel) },
         { role: 'user', content: userMessage },

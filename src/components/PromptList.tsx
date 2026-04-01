@@ -15,6 +15,8 @@ interface PromptListProps {
   activeMode: GenerationMode
   onPromptUpdate: (index: number, newPrompt: string) => void
   displayMode?: 'full' | 'briefOnly'
+  /** When true, brief and analysis panels are rendered elsewhere — hide them here */
+  hideBriefAndAnalysis?: boolean
 }
 
 export default function PromptList({
@@ -26,6 +28,7 @@ export default function PromptList({
   activeMode,
   onPromptUpdate,
   displayMode = 'full',
+  hideBriefAndAnalysis = false,
 }: PromptListProps) {
   const [showCues, setShowCues] = useState(false)
   const [showBrief, setShowBrief] = useState(displayMode === 'briefOnly')
@@ -195,7 +198,7 @@ export default function PromptList({
         />
       )}
 
-      {creativeBrief && (
+      {creativeBrief && !hideBriefAndAnalysis && (
         <div className="border border-neutral-200 rounded-sm">
           {displayMode === 'briefOnly' ? (
             <div className="px-4 py-3">
@@ -317,7 +320,7 @@ export default function PromptList({
         </div>
       )}
 
-      {visualStyleCues && (
+      {visualStyleCues && !hideBriefAndAnalysis && (
         <div className="border border-neutral-200 rounded-sm">
           <button
             onClick={() => setShowCues(!showCues)}

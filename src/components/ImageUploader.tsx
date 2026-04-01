@@ -232,7 +232,7 @@ export default function ImageUploader({ images, imageLabels, maxImages, onChange
                 <button
                   onClick={() => removeImage(i)}
                   aria-label="Remove image"
-                  className="absolute -top-2 -right-2 w-5 h-5 min-w-[44px] min-h-[44px] rounded-full bg-neutral-800 text-white text-[10px] leading-none flex items-center justify-center opacity-70 hover:opacity-100 transition-opacity"
+                  className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-neutral-800 text-white text-[10px] leading-none flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
                 >
                   ×
                 </button>

@@ -66,6 +66,21 @@ export default function LoadingAnimation({ phase }: { phase: LoadingPhase }) {
         {PHASE_LABEL[phase]}
       </span>
 
+      {/* Latency disclaimer */}
+      <span
+        style={{
+          fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
+          fontSize: 9,
+          letterSpacing: '0.08em',
+          color: '#d4d4d4',
+          textAlign: 'center',
+          maxWidth: 260,
+          lineHeight: 1.4,
+        }}
+      >
+        Results may take a moment — the pipeline runs multiple LLM calls via OpenRouter
+      </span>
+
       <style>{`
         @keyframes nothing-dot {
           0%   { opacity: 1; }

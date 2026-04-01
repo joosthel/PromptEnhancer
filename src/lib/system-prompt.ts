@@ -114,6 +114,8 @@ One sentence. This is the creative seed for downstream art direction.
 
 Write a ~500-word synthesis. Focus on WHAT THE IMAGES SHOW AND FEEL LIKE — their stories, spatial strategies, and atmosphere. Do NOT write a technical lighting spec.
 
+CRITICAL: Be CONCRETE and SPECIFIC. Name actual objects, materials, spatial relationships, and atmospheric conditions you see. "A concrete wall with visible water staining" beats "an urban surface." "Cold blue-grey light from above left, shadows falling diagonally" beats "moody lighting." The downstream pipeline depends on your specificity — vague descriptions produce prompts that don't match the images.
+
 Return a JSON object with exactly these four fields:
 {
   "description": "your ~500-word synthesis of scenes, concepts, and visual language",

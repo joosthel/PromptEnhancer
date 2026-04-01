@@ -110,6 +110,10 @@ export async function POST(request: NextRequest) {
         model: 'deepseek/deepseek-v3.2',
         apiKey,
         responseFormat: 'json_object',
+        temperature: 0.5,
+        top_p: 0.85,
+        max_tokens: 4096,
+        stop: ['\n\n\n'],
         messages: [
           { role: 'system', content: BRIEF_SYSTEM_PROMPT },
           { role: 'user', content: briefUserMessage },
@@ -140,6 +144,10 @@ export async function POST(request: NextRequest) {
       model: 'deepseek/deepseek-v3.2',
       apiKey,
       responseFormat: 'json_object',
+      temperature: 0.4,
+      top_p: 0.85,
+      max_tokens: 4096,
+      stop: ['\n\n\n'],
       messages: [
         { role: 'system', content: buildSystemPrompt(targetModel, mode) },
         { role: 'user', content: userMessage },

@@ -33,7 +33,7 @@ export default function ModeSelector({
           >
             <div className="text-sm font-medium">{mode.label}</div>
             <div className={`text-xs mt-0.5 ${
-              appMode === mode.id ? 'text-neutral-400' : 'text-neutral-400'
+              appMode === mode.id ? 'text-neutral-500' : 'text-neutral-400'
             }`}>
               {mode.tagline}
             </div>
@@ -48,7 +48,7 @@ export default function ModeSelector({
             <button
               key={mode.id}
               onClick={() => onSubModeChange(mode.id)}
-              className={`text-xs px-3 py-2.5 min-h-[44px] rounded-sm transition-all ${
+              className={`text-xs px-3 py-2 rounded-sm transition-all ${
                 generationSubMode === mode.id
                   ? 'bg-neutral-700 text-white'
                   : 'bg-white text-neutral-500 border border-neutral-200 hover:border-neutral-400'

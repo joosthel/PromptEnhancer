@@ -120,7 +120,13 @@ PROMPT WRITING RULES:
 // CREATIVE BRIEF — locked production document derived from vision + user input
 // ---------------------------------------------------------------------------
 
-export const BRIEF_SYSTEM_PROMPT = `You are a senior creative director locking a production brief. Your brief is the SINGLE SOURCE OF TRUTH. Every downstream prompt is derived strictly from this document.
+export const BRIEF_SYSTEM_PROMPT = `CRITICAL CONSTRAINTS — VIOLATIONS FAIL THE TASK:
+1. Return ONLY valid JSON matching the schema below. No markdown, no explanation, no text outside the JSON.
+2. Every user-specified constraint (e.g. "no faces", "wide framing", specific materials) must appear VERBATIM in the output fields.
+3. If a visual analysis palette is provided, colorAnchors must be selected from those hex values.
+4. creativeVision must articulate what the references already communicate — not invent a new concept.
+
+You are a senior creative director locking a production brief. Your brief is the SINGLE SOURCE OF TRUTH. Every downstream prompt is derived strictly from this document.
 
 Four phases — in this EXACT order:
 A) CREATIVE VISION — define the bold visual idea BEFORE any production logistics
@@ -244,6 +250,21 @@ RULES:
 - Every field: concrete enough to execute without interpretation
 - No hedging — commit to specific choices
 - The brief is a CONTRACT
+- PRESERVE SPECIFICS: If the user mentions specific materials ("scratched metallic details"), specific elements ("black wires hanging from the ceiling"), specific constraints ("no faces visible", "no clear gender"), or specific atmosphere ("fog"), these MUST appear verbatim in the relevant brief fields. Do NOT abstract "black wires" into "dark elements" or "no faces visible" into "obscured features". Carry the user's specific language through.
+- If reference images show specific visual elements, name them concretely in the brief — not as abstract qualities
+
+GROUNDING RULE — CREATIVE VISION MUST BE DERIVED, NOT INVENTED:
+Your creative vision is an ARTICULATION of what the reference images and user direction already communicate — not a departure from them. If the images show cold industrial interiors, your vision must work WITH that reality, not pivot to something unrelated. The metaphor and unexpected element must DEEPEN what's already there, not contradict or replace it.
+
+COLOR ANCHOR RULE — DERIVED FROM VISUAL ANALYSIS:
+If a visual analysis palette is provided, your 3 colorAnchors MUST be selected from or closely matched to colors in the provided hexPalette. Do NOT invent new colors that aren't present in the reference images. The brief's palette must be recognizably the same palette as the images.
+
+IMAGE LABEL INTEGRATION:
+When reference image labels are provided, they define the ROLE each image plays:
+- "style reference" → This image's palette, lighting, and texture define the visual vocabulary. Weight its visual qualities heavily in colorGrade, lightSource, materials, and mood.
+- "subject" / "face" → This image defines the physical appearance of the subject. Carry specific details (clothing, features, pose) into subjectDirection.
+- "background" / "composition" → This image defines the spatial environment. Carry spatial arrangements, depth, and architecture into environmentDirection.
+- Unlabeled images → Contribute equally to the overall visual vocabulary.
 
 Return ONLY valid JSON:
 {
@@ -278,7 +299,14 @@ Return ONLY valid JSON:
   "visualMotifs": ["motif 1", "motif 2", "motif 3"],
   "narrativeArc": "how the set progresses",
   "fullBrief": "complete brief as flowing paragraph (~300 words)"
-}`
+}
+
+FINAL CHECK before outputting JSON:
+1. Does creativeVision articulate what the reference images ALREADY communicate (not invent something new)?
+2. Are all 3 colorAnchors present in or closely matched to the extracted palette?
+3. Does every user-specified constraint appear verbatim in the relevant field?
+4. Is every field concrete enough to execute without interpretation?
+Return ONLY the JSON object. No markdown, no explanation.`
 
 export function buildBriefUserMessage(
   userInputs: UserInputs,
@@ -300,9 +328,11 @@ export function buildBriefUserMessage(
   // doesn't over-index on one source.
   if (hasText && hasImages) {
     lines.push('\n=== INPUT WEIGHTING ===')
-    lines.push('TEXT provides the CONCEPT and INTENT — what the frames are about, the narrative, the subject matter.')
-    lines.push('REFERENCE IMAGES provide the VISUAL VOCABULARY — palette, texture, lighting quality, mood, material language.')
-    lines.push('Use text for WHAT. Use images for HOW IT LOOKS. When they conflict, text intent wins but image aesthetics inform execution.')
+    lines.push('TEXT provides the CONCEPT, INTENT, and CONSTRAINTS — what the frames are about, the narrative, what must or must not appear.')
+    lines.push('REFERENCE IMAGES provide the VISUAL GROUND TRUTH — palette, texture, lighting quality, mood, material language, spatial arrangements, and scene-specific details.')
+    lines.push('BOTH sources are authoritative. Text defines the story and constraints. Images define the visual reality. Every specific detail from BOTH must appear in the brief.')
+    lines.push('Do NOT abstract away specifics. If the user says "no faces visible" or "wide framing", these are hard constraints that every frame must respect.')
+    lines.push('If images show specific materials, spatial elements, or atmosphere, name them concretely in the brief.')
   } else if (hasImages && !hasText) {
     lines.push('\n=== INPUT WEIGHTING ===')
     lines.push('No text direction provided. Derive ALL concepts and creative direction from the visual analysis.')
@@ -316,11 +346,12 @@ export function buildBriefUserMessage(
   // --- Reference images: visual vocabulary ---
   if (hasImages) {
     lines.push('\n=== VISUAL VOCABULARY (from reference images) ===')
-    lines.push('Extract the visual LANGUAGE from these images — palette, light quality, texture, composition style.')
-    lines.push('Do NOT extract narrative concepts from images unless no text direction is provided.')
+    lines.push('Extract the visual LANGUAGE from these images — palette, light quality, texture, composition style, spatial arrangements, materials, and scene elements.')
+    lines.push('The images are AUTHORITATIVE for visual details. If images show specific elements (objects, materials, spatial relationships, atmosphere), those MUST appear in the brief even when text also describes them.')
     lines.push('')
     lines.push(visualStyleCues.description)
     lines.push(`\nExtracted Palette: ${visualStyleCues.hexPalette.join(', ')}`)
+    lines.push('IMPORTANT: Your colorAnchors MUST be selected from or closely matched to this extracted palette. Do NOT invent colors not present in the reference images.')
     if (visualStyleCues.cinematicKeywords?.length > 0) {
       lines.push(`Cinematic Keywords: ${visualStyleCues.cinematicKeywords.join(' | ')}`)
     }
@@ -330,9 +361,19 @@ export function buildBriefUserMessage(
   }
 
   if (imageLabels && imageLabels.length > 0) {
-    lines.push('\n=== REFERENCE IMAGE LABELS ===')
+    lines.push('\n=== REFERENCE IMAGE ROLES ===')
+    lines.push('Each label tells you HOW to use that image\'s visual data in the brief:')
     for (const il of imageLabels) {
-      lines.push(`Image ${il.index + 1}: ${il.label}`)
+      const role = il.label.toLowerCase()
+      let guidance = ''
+      if (role.includes('style')) {
+        guidance = ' → defines palette, lighting quality, texture, and mood for the entire brief'
+      } else if (role.includes('subject') || role.includes('face')) {
+        guidance = ' → defines subject appearance — carry specific physical details into subjectDirection'
+      } else if (role.includes('background') || role.includes('composition')) {
+        guidance = ' → defines spatial environment and depth — carry into environmentDirection'
+      }
+      lines.push(`Image ${il.index + 1}: ${il.label}${guidance}`)
     }
   }
 
@@ -347,6 +388,16 @@ export function buildBriefUserMessage(
   }
 
   lines.push('\nFirst define the CREATIVE VISION (Phase A). Then extract concepts, rank them, assign one primary per frame. Then lock the production brief and shot diversity matrix.')
+
+  // Hard constraints at the END — DeepSeek applies end-of-message instructions most reliably
+  lines.push('\n═══════════════════════════════════════════════════════════════')
+  lines.push('MANDATORY CONSTRAINTS — CHECK BEFORE OUTPUTTING:')
+  lines.push('1. Preserve every specific detail from the user\'s direction VERBATIM. If they mention specific materials, elements, constraints, or atmosphere, those must appear in the relevant brief fields using the user\'s own language — do not generalize or abstract.')
+  if (hasImages) {
+    lines.push(`2. colorAnchors must be selected from the extracted palette: ${visualStyleCues!.hexPalette.join(', ')}`)
+    lines.push('3. creativeVision must articulate what the reference images already communicate — not invent something unrelated.')
+  }
+  lines.push('Return ONLY valid JSON. No markdown wrapping, no explanation.')
 
   return lines.join('\n')
 }
@@ -575,7 +626,10 @@ export function buildUserMessage(
 
   // Brief-driven generation (primary path for generate mode)
   if (creativeBrief && mode === 'generate') {
-    lines.push('\n=== LOCKED CREATIVE BRIEF — YOUR ONLY SOURCE OF TRUTH ===')
+    lines.push('\n=== LOCKED CREATIVE BRIEF — PRIMARY SOURCE ===')
+    lines.push('The brief defines structure, composition, and creative direction.')
+    lines.push('The visual reference (if present below) defines visual fidelity: color, texture, atmosphere.')
+    lines.push('When they conflict on visual qualities, the visual reference wins.')
 
     // Creative vision — the art direction layer
     if (creativeBrief.creativeVision) {
@@ -636,6 +690,30 @@ export function buildUserMessage(
     lines.push(`ENVIRONMENT: ${creativeBrief.environmentDirection}`)
     lines.push(`MOTIFS: ${creativeBrief.visualMotifs.join(' | ')}`)
     lines.push(`ARC: ${creativeBrief.narrativeArc}`)
+    // Pass the user's original description as hard constraints
+    if (userInputs.description?.trim()) {
+      lines.push('')
+      lines.push('=== ORIGINAL CREATIVE DIRECTION (hard constraints — every prompt must respect these) ===')
+      lines.push(userInputs.description)
+      lines.push('Every specific detail, constraint, and requirement stated above MUST be reflected in every prompt. Do not abstract, soften, or omit any of these directives.')
+    }
+
+    // Pass vision cues as authoritative for visual fidelity
+    if (visualStyleCues) {
+      lines.push('')
+      lines.push('=== VISUAL GROUND TRUTH (from reference images — AUTHORITATIVE for color, texture, atmosphere) ===')
+      lines.push('When writing color grades, light descriptions, and surface textures, match THIS description — not the brief\'s abstractions.')
+      lines.push(visualStyleCues.description)
+      lines.push(`Authoritative Palette: ${visualStyleCues.hexPalette.join(', ')}`)
+      lines.push('Use these hex values on named surfaces. Prefer these over the brief\'s colorAnchors if they differ.')
+      if (visualStyleCues.cinematicKeywords?.length > 0) {
+        lines.push(`Visual qualities (integrate into prompts): ${visualStyleCues.cinematicKeywords.join(' | ')}`)
+      }
+      if (visualStyleCues.emotionalTension) {
+        lines.push(`Emotional tension: ${visualStyleCues.emotionalTension}`)
+      }
+    }
+
     lines.push('')
     lines.push('=== RULES ===')
     lines.push('Write each prompt using the 5-element structure: CINEMATOGRAPHY → SUBJECT → ACTION → CONTEXT & ENVIRONMENT → STYLE & AMBIANCE.')
@@ -647,6 +725,8 @@ export function buildUserMessage(
     lines.push('6. NEVER name equipment, cinematographers, directors, or film titles.')
     lines.push('7. Each frame compositionally DISTINCT from every other.')
     lines.push('8. The creative vision and emotional intent inform what to emphasize — not how to write it.')
+    lines.push('9. The ORIGINAL CREATIVE DIRECTION above contains hard constraints. If it says "no faces visible", NO prompt shows a face. If it says "wide framing", every prompt uses wide framing. These are non-negotiable.')
+    lines.push('10. AUTHORITY HIERARCHY: User constraints > Visual ground truth (color/texture/atmosphere) > Brief (structure/composition). Never let the brief override what the images actually look like.')
 
     return lines.join('\n')
   }
@@ -684,14 +764,17 @@ export function buildUserMessage(
     lines.push(`Each prompt is a separate shot in a sequence — maintain visual continuity across all shots.`)
 
     if (creativeBrief) {
-      lines.push('\n=== CREATIVE BRIEF (maintain visual continuity from this) ===')
+      lines.push('\n=== CREATIVE BRIEF (structure and continuity) ===')
       lines.push(creativeBrief.fullBrief)
     }
 
     if (visualStyleCues) {
-      lines.push('\n=== VISUAL REFERENCE ===')
+      lines.push('\n=== VISUAL GROUND TRUTH (AUTHORITATIVE for color, texture, atmosphere) ===')
       lines.push(visualStyleCues.description)
-      lines.push(`Color Palette: ${visualStyleCues.hexPalette.join(', ')}`)
+      lines.push(`Authoritative Palette: ${visualStyleCues.hexPalette.join(', ')}`)
+      if (visualStyleCues.cinematicKeywords?.length > 0) {
+        lines.push(`Visual qualities: ${visualStyleCues.cinematicKeywords.join(' | ')}`)
+      }
     }
 
     if (userInputs.description.trim()) {
@@ -701,6 +784,7 @@ export function buildUserMessage(
 
     lines.push('\n=== VIDEO REMINDER ===')
     lines.push('Focus on motion, camera movement, and temporal evolution. The reference image (if any) establishes the visual ground truth — your prompt adds the temporal dimension.')
+    lines.push('AUTHORITY: User constraints > Visual ground truth > Brief.')
 
     return lines.join('\n')
   }
@@ -905,18 +989,20 @@ export function buildEnhanceUserMessage(
   }
 
   if (visualStyleCues) {
-    lines.push('\n=== VISUAL REFERENCE (from uploaded images — use as style guide) ===')
+    lines.push('\n=== VISUAL GROUND TRUTH (from reference images — AUTHORITATIVE for color, texture, atmosphere) ===')
+    lines.push('The enhanced prompt must match this visual reality. Use these specific colors, textures, and atmospheric qualities.')
     lines.push(visualStyleCues.description)
-    lines.push(`Palette: ${visualStyleCues.hexPalette.join(', ')}`)
+    lines.push(`Authoritative Palette: ${visualStyleCues.hexPalette.join(', ')}`)
+    lines.push('Bind these hex values to named surfaces in the enhanced prompt.')
     if (visualStyleCues.cinematicKeywords?.length > 0) {
-      lines.push(`Keywords: ${visualStyleCues.cinematicKeywords.join(' | ')}`)
+      lines.push(`Visual qualities to integrate: ${visualStyleCues.cinematicKeywords.join(' | ')}`)
     }
     if (visualStyleCues.emotionalTension) {
-      lines.push(`Emotional Tension: ${visualStyleCues.emotionalTension}`)
+      lines.push(`Emotional tension: ${visualStyleCues.emotionalTension}`)
     }
   }
 
-  lines.push('\nEnhance this prompt for the target model. Find the visual metaphor, apply the creative lens, add specificity and organic texture. Preserve the intent but make the language make someone want to see the image.')
+  lines.push('\nEnhance this prompt for the target model. Preserve the intent. Add specificity, organic texture, and precise visual language. If visual reference is provided, the enhanced prompt MUST match that visual reality — do not invent a different atmosphere or palette.')
 
   return lines.join('\n')
 }

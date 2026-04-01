@@ -2,11 +2,12 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react'
 import ImageUploader from '@/components/ImageUploader'
-import InputForm from '@/components/InputForm'
 import PromptList from '@/components/PromptList'
 import ModeSelector from '@/components/ModeSelector'
 import ModelSelector from '@/components/ModelSelector'
 import CreditPopup from '@/components/CreditPopup'
+import BriefPanel from '@/components/BriefPanel'
+import AnalysisPanel from '@/components/AnalysisPanel'
 import LoadingAnimation, { type LoadingPhase as AnimLoadingPhase } from '@/components/LoadingAnimation'
 import HelpModal from '@/components/HelpModal'
 import { ImageInput, computeImageFingerprint } from '@/lib/image-utils'
@@ -24,6 +25,29 @@ type LoadingPhase = 'idle' | 'analyzing' | 'briefing' | 'generating' | 'done'
 const DEFAULT_INPUTS: UserInputs = {
   description: '',
 }
+
+const PROMPT_COUNTS = [1, 2, 3, 4, 5, 6]
+
+const PLACEHOLDERS: Record<GenerationMode, string> = {
+  generate:
+    'Describe your scene: subject, environment, mood, lighting.\ne.g. A woman on a rain-slicked Tokyo rooftop at night, neon reflections, melancholic.',
+  edit:
+    'Describe the result you want.\ne.g. Replace the background with a sunset beach. Keep the subject unchanged.',
+  video:
+    'Describe motion and camera movement over time.\ne.g. Camera dollies in on a woman at a cafe. She looks up, rain begins outside.',
+}
+
+const ENHANCE_PLACEHOLDERS: Record<GenerationMode, string> = {
+  generate:
+    'Paste your prompt here to optimize for the selected model.\ne.g. beautiful woman in golden light, cinematic, moody',
+  edit:
+    'Paste your edit prompt here. Upload reference images for context.\ne.g. Replace the background with a moody warehouse. Keep the subject.',
+  video:
+    'Paste your video prompt to optimize for the selected model.\ne.g. Camera dollies in on woman at cafe, she looks up, rain begins',
+}
+
+const ARTDIRECTION_PLACEHOLDER =
+  'Describe the visual narrative and mood you want to develop.\ne.g. Fashion editorial in an abandoned greenhouse. Nature reclaiming high fashion.'
 
 export default function Home() {
   const [images, setImages] = useState<ImageInput[]>([])
@@ -82,8 +106,6 @@ export default function Home() {
     } else if (mode === 'artdirection') {
       setActiveMode('generate')
       setActiveModel(DEFAULT_MODEL)
-    } else {
-      // enhance — keep current sub-mode so edit enhancement stays available
     }
   }
 
@@ -266,7 +288,12 @@ export default function Home() {
     )
   }
 
+  // ---------- Derived state ----------
+
   const isLoading = loadingPhase === 'analyzing' || loadingPhase === 'briefing' || loadingPhase === 'generating'
+  const hasPrompts = result && result.prompts && result.prompts.length > 0
+  // Center column opens for loading or when we have prompts to show
+  const showCenter = isLoading || !!hasPrompts
 
   const loadingText =
     loadingPhase === 'analyzing'
@@ -283,11 +310,23 @@ export default function Home() {
     : activeMode === 'video' ? 'Generate Video Prompts'
     : 'Generate Prompts'
 
+  const placeholder = appMode === 'enhance'
+    ? ENHANCE_PLACEHOLDERS[activeMode]
+    : appMode === 'artdirection'
+      ? ARTDIRECTION_PLACEHOLDER
+      : PLACEHOLDERS[activeMode]
+
+  const textareaLabel = appMode === 'enhance'
+    ? activeMode === 'edit' ? 'Edit Prompt to Enhance' : activeMode === 'video' ? 'Video Prompt to Enhance' : 'Prompt to Enhance'
+    : appMode === 'artdirection'
+      ? 'Creative Direction'
+      : 'Description'
+
   return (
-    <main className="min-h-screen bg-[#FAFAFA]">
-      {/* Top bar */}
-      <div className="border-b border-neutral-100">
-        <div className="max-w-7xl mx-auto px-6 py-3 flex items-center justify-between">
+    <main className="h-screen flex flex-col bg-[#FAFAFA] overflow-hidden">
+      {/* ── Top bar ── */}
+      <div className="border-b border-neutral-100 shrink-0">
+        <div className="max-w-full mx-auto px-6 py-3 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <h1 className="text-lg font-medium tracking-tight text-neutral-900">PromptEnhancer</h1>
             <span className="text-neutral-300">&middot;</span>
@@ -310,125 +349,155 @@ export default function Home() {
         </div>
       </div>
 
-      {/* Split panel */}
-      <div className="max-w-7xl mx-auto px-6 py-8 lg:flex lg:gap-8">
-        {/* Left panel - inputs */}
-        <div className="lg:w-[380px] lg:flex-shrink-0 space-y-5">
-          <ModeSelector
-            appMode={appMode}
-            generationSubMode={activeMode}
-            onAppModeChange={handleAppModeChange}
-            onSubModeChange={handleSubModeChange}
-          />
+      {/* ── Three-column layout ── */}
+      <div className={`flex-1 flex overflow-hidden transition-all duration-700 ease-[cubic-bezier(0.4,0,0.2,1)] ${
+        showCenter ? 'max-w-full' : 'max-w-[720px] mx-auto'
+      }`}>
 
-          <div className="border-t border-neutral-100" />
+        {/* ─── LEFT COLUMN — Settings ─── */}
+        <div className={`shrink-0 flex flex-col overflow-y-auto transition-all duration-700 ease-[cubic-bezier(0.4,0,0.2,1)] ${
+          showCenter
+            ? 'w-[280px] px-5 py-5 border-r border-neutral-100'
+            : 'w-[340px] py-5 px-5'
+        }`}>
+          <div className="space-y-4">
+            <ModeSelector
+              appMode={appMode}
+              generationSubMode={activeMode}
+              onAppModeChange={handleAppModeChange}
+              onSubModeChange={handleSubModeChange}
+            />
 
-          <ModelSelector
-            activeModel={activeModel}
-            appMode={appMode}
-            generationSubMode={activeMode}
-            onChange={setActiveModel}
-          />
+            <div className="border-t border-neutral-100" />
 
-          <div className="border-t border-neutral-100" />
-          <ImageUploader
-            images={images}
-            imageLabels={imageLabels}
-            maxImages={appMode === 'enhance' ? 3 : undefined}
-            onChange={handleImagesChange}
-            onLabelsChange={setImageLabels}
-          />
+            <ModelSelector
+              activeModel={activeModel}
+              appMode={appMode}
+              generationSubMode={activeMode}
+              onChange={setActiveModel}
+            />
 
-          <div className="border-t border-neutral-100" />
-
-          <InputForm
-            values={userInputs}
-            promptCount={promptCount}
-            appMode={appMode}
-            generationSubMode={activeMode}
-            onChange={setUserInputs}
-            onPromptCountChange={setPromptCount}
-          />
-
-          {error && (
-            <div role="alert" className="border border-red-100 bg-red-50 rounded-sm px-4 py-3">
-              <p className="text-sm text-red-600">{error}</p>
-            </div>
-          )}
-
-          <button
-            onClick={handleGenerateClick}
-            disabled={isLoading}
-            className="w-full py-3 bg-neutral-900 text-white text-sm rounded-sm hover:bg-neutral-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {isLoading ? loadingText : generateLabel}
-          </button>
-          <div aria-live="polite" className="sr-only">
-            {isLoading ? loadingText : ''}
+            {appMode !== 'enhance' && (
+              <>
+                <div className="border-t border-neutral-100" />
+                <div>
+                  <label className="block text-xs uppercase tracking-widest text-neutral-400 mb-2">
+                    {appMode === 'artdirection' ? 'Shot Cards' : 'Prompts'}
+                  </label>
+                  <div className="flex gap-1.5">
+                    {PROMPT_COUNTS.map((count) => (
+                      <button
+                        key={count}
+                        onClick={() => setPromptCount(count)}
+                        className={`w-9 h-9 text-sm rounded-sm border transition-all ${
+                          promptCount === count
+                            ? 'bg-neutral-900 text-white border-neutral-900'
+                            : 'bg-white text-neutral-500 border-neutral-200 hover:border-neutral-400'
+                        }`}
+                      >
+                        {count}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </>
+            )}
           </div>
         </div>
 
-        {/* Right panel - results */}
-        <div className="flex-1 mt-4 lg:mt-0">
-          {result && (
-            <PromptList
-              prompts={result.prompts}
-              visualStyleCues={result.visualStyleCues}
-              creativeBrief={result.creativeBrief}
-              userInputs={userInputs}
-              activeModel={activeModel}
-              activeMode={activeMode}
-              onPromptUpdate={handlePromptUpdate}
-              displayMode={appMode === 'artdirection' ? 'briefOnly' : 'full'}
-            />
-          )}
-          {!result && !isLoading && (
-            <div className="flex items-center justify-center min-h-[60vh]">
-              <div className="max-w-md text-center space-y-4 px-6">
-                <div className="text-neutral-300 text-4xl font-light tracking-tight">
-                  {appMode === 'enhance' ? 'Enhance' : appMode === 'artdirection' ? 'Art Direction' : 'Generate'}
-                </div>
-                <p className="text-sm text-neutral-400 leading-relaxed">
-                  {appMode === 'enhance'
-                    ? 'Paste an existing prompt on the left and select your target model. The enhancer will restructure and optimize it for the model\'s architecture.'
-                    : appMode === 'artdirection'
-                      ? 'Describe your visual narrative and upload reference images. You\'ll receive a creative brief with vision, metaphor, shot cards, and color anchors.'
-                      : 'Describe your concept or upload reference images to get started. The pipeline will analyze your references, develop a creative brief, and derive model-specific prompts.'}
-                </p>
-                <div className="flex items-center justify-center gap-4 pt-2">
-                  <div className="flex items-center gap-1.5 text-xs text-neutral-300">
-                    <span className="w-1.5 h-1.5 rounded-full bg-neutral-300" />
-                    Vision
-                  </div>
-                  <div className="w-4 border-t border-neutral-200" />
-                  <div className="flex items-center gap-1.5 text-xs text-neutral-300">
-                    <span className="w-1.5 h-1.5 rounded-full bg-neutral-300" />
-                    Brief
-                  </div>
-                  {appMode !== 'artdirection' && (
-                    <>
-                      <div className="w-4 border-t border-neutral-200" />
-                      <div className="flex items-center gap-1.5 text-xs text-neutral-300">
-                        <span className="w-1.5 h-1.5 rounded-full bg-neutral-300" />
-                        Prompts
-                      </div>
-                    </>
-                  )}
-                </div>
+        {/* ─── CENTER COLUMN — Results (split-reveal) ─── */}
+        <div
+          className={`overflow-hidden transition-all duration-700 ease-[cubic-bezier(0.4,0,0.2,1)] ${
+            showCenter ? 'flex-1 min-w-0 opacity-100' : 'w-0 opacity-0'
+          }`}
+        >
+          <div className="h-full overflow-y-auto px-6 py-5">
+            {isLoading && (
+              <div className="flex items-center justify-center h-full">
+                <LoadingAnimation phase={loadingPhase as AnimLoadingPhase} />
               </div>
+            )}
+            {result && hasPrompts && (
+              <PromptList
+                prompts={result.prompts}
+                visualStyleCues={result.visualStyleCues}
+                creativeBrief={result.creativeBrief}
+                userInputs={userInputs}
+                activeModel={activeModel}
+                activeMode={activeMode}
+                onPromptUpdate={handlePromptUpdate}
+                displayMode={appMode === 'artdirection' ? 'briefOnly' : 'full'}
+                hideBriefAndAnalysis
+              />
+            )}
+          </div>
+        </div>
+
+        {/* ─── RIGHT COLUMN — Creative Input ─── */}
+        <div className={`shrink-0 flex flex-col overflow-y-auto transition-all duration-700 ease-[cubic-bezier(0.4,0,0.2,1)] ${
+          showCenter
+            ? 'w-[280px] px-5 py-5 border-l border-neutral-100'
+            : 'w-[340px] py-5 px-5'
+        }`}>
+          <div className="flex flex-col flex-1 min-h-0 gap-4">
+            <ImageUploader
+              images={images}
+              imageLabels={imageLabels}
+              maxImages={appMode === 'enhance' ? 3 : undefined}
+              onChange={handleImagesChange}
+              onLabelsChange={setImageLabels}
+            />
+
+            <div className="border-t border-neutral-100" />
+
+            <div className="flex flex-col flex-1 min-h-0">
+              <label className="block text-xs uppercase tracking-widest text-neutral-400 mb-2 shrink-0">
+                {textareaLabel}
+              </label>
+              <textarea
+                value={userInputs.description}
+                onChange={(e) => setUserInputs({ description: e.target.value })}
+                placeholder={placeholder}
+                className="flex-1 min-h-[140px] w-full border border-neutral-200 rounded-sm px-3 py-2 text-sm bg-white focus:outline-none focus:border-neutral-400 resize-none placeholder:text-neutral-400"
+              />
             </div>
-          )}
-          {isLoading && (
-            <div className="flex items-center justify-center h-64">
-              <LoadingAnimation phase={loadingPhase as AnimLoadingPhase} />
+
+            {error && (
+              <div role="alert" className="border border-red-100 bg-red-50 rounded-sm px-3 py-2 shrink-0">
+                <p className="text-xs text-red-600">{error}</p>
+              </div>
+            )}
+
+            <button
+              onClick={handleGenerateClick}
+              disabled={isLoading}
+              className="w-full py-3 bg-neutral-900 text-white text-sm rounded-sm hover:bg-neutral-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
+            >
+              {isLoading ? loadingText : generateLabel}
+            </button>
+            <div aria-live="polite" className="sr-only">
+              {isLoading ? loadingText : ''}
             </div>
-          )}
+
+            {/* Brief + Analysis — appear after generation, on the right */}
+            {result?.creativeBrief && (
+              <BriefPanel
+                brief={result.creativeBrief}
+                defaultOpen={appMode === 'artdirection'}
+              />
+            )}
+            {result?.visualStyleCues && (
+              <AnalysisPanel cues={result.visualStyleCues} />
+            )}
+          </div>
         </div>
       </div>
+
+      {/* ── Modals ── */}
       <HelpModal open={helpOpen} onClose={() => setHelpOpen(false)} />
       <CreditPopup open={showCreditPopup} onContinue={handleCreditConfirm} onCancel={handleCreditCancel} />
 
-      {/* First-visit intro */}
+      {/* ── First-visit intro ── */}
       {showIntro && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={handleIntroDismiss}>
           <div role="dialog" aria-modal="true" aria-labelledby="intro-title" className="bg-white max-w-lg w-full mx-4 rounded-sm shadow-xl" onClick={(e) => e.stopPropagation()}>
@@ -441,7 +510,7 @@ export default function Home() {
               </div>
 
               <p className="text-sm text-neutral-600 leading-relaxed">
-                This tool generates model-optimized prompts for AI image and video production. It runs a three-step pipeline: vision analysis of your reference images, creative brief development, and prompt derivation tailored to each model's architecture.
+                This tool generates model-optimized prompts for AI image and video production. It runs a three-step pipeline: vision analysis of your reference images, creative brief development, and prompt derivation tailored to each model&apos;s architecture.
               </p>
 
               <div className="space-y-3 text-sm">

@@ -96,14 +96,14 @@ export default function PromptCard({
           <button
             onClick={() => setFixOpen((o) => !o)}
             disabled={isFixing}
-            className="text-xs px-2 py-1 min-h-[44px] border border-neutral-200 rounded-sm text-neutral-400 hover:text-neutral-700 hover:border-neutral-300 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+            className="text-xs px-2.5 py-1.5 border border-neutral-200 rounded-sm text-neutral-400 hover:text-neutral-700 hover:border-neutral-300 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
           >
             {isFixing ? 'Fixing...' : fixOpen ? 'Close' : 'Fix'}
           </button>
           <button
             onClick={handleCopy}
             aria-label="Copy prompt"
-            className="text-xs px-2 py-1 min-h-[44px] border border-neutral-200 rounded-sm text-neutral-400 hover:text-neutral-700 hover:border-neutral-300 transition-all"
+            className="text-xs px-2.5 py-1.5 border border-neutral-200 rounded-sm text-neutral-400 hover:text-neutral-700 hover:border-neutral-300 transition-all"
           >
             {copied ? 'Copied' : 'Copy'}
           </button>

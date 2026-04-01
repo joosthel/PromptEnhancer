@@ -25,6 +25,14 @@ export interface OpenRouterOptions {
   apiKey: string
   /** When set to 'json_object', instructs the model to return valid JSON. */
   responseFormat?: 'json_object'
+  /** Sampling temperature. Lower = more deterministic. */
+  temperature?: number
+  /** Nucleus sampling. Lower = more focused. */
+  top_p?: number
+  /** Maximum tokens in the response. Prevents mid-stream JSON truncation. */
+  max_tokens?: number
+  /** Stop sequences to prevent trailing text after JSON. */
+  stop?: string[]
 }
 
 /**
@@ -34,44 +42,65 @@ export interface OpenRouterOptions {
  * @throws {Error} If the HTTP response is not OK or the response body contains no content.
  */
 export async function callOpenRouter(options: OpenRouterOptions): Promise<string> {
-  const controller = new AbortController()
-  const timeout = setTimeout(() => controller.abort(), 150_000)
+  const MAX_RETRIES = 2
 
-  try {
-    const response = await fetch(OPENROUTER_API_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${options.apiKey}`,
-        'HTTP-Referer': process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000',
-        'X-Title': 'PromptEnhancer',
-      },
-      body: JSON.stringify({
-        model: options.model,
-        messages: options.messages,
-        ...(options.responseFormat && {
-          response_format: { type: options.responseFormat },
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 150_000)
+
+    try {
+      const response = await fetch(OPENROUTER_API_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${options.apiKey}`,
+          'HTTP-Referer': process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000',
+          'X-Title': 'PromptEnhancer',
+        },
+        body: JSON.stringify({
+          model: options.model,
+          messages: options.messages,
+          ...(options.responseFormat && {
+            response_format: { type: options.responseFormat },
+          }),
+          ...(options.temperature !== undefined && { temperature: options.temperature }),
+          ...(options.top_p !== undefined && { top_p: options.top_p }),
+          ...(options.max_tokens !== undefined && { max_tokens: options.max_tokens }),
+          ...(options.stop && { stop: options.stop }),
         }),
-      }),
-      signal: controller.signal,
-    })
+        signal: controller.signal,
+      })
 
-    if (!response.ok) {
-      const errorText = await response.text()
-      throw new Error(`OpenRouter API error ${response.status}: ${errorText}`)
+      if (!response.ok) {
+        const errorText = await response.text()
+        throw new Error(`OpenRouter API error ${response.status}: ${errorText}`)
+      }
+
+      const data = await response.json()
+      const content = data.choices?.[0]?.message?.content
+
+      if (!content) {
+        if (attempt < MAX_RETRIES) {
+          clearTimeout(timeout)
+          continue
+        }
+        throw new Error('Empty response from OpenRouter')
+      }
+
+      return content
+    } catch (error) {
+      clearTimeout(timeout)
+      // Only retry on empty responses, not on API errors or aborts
+      if (attempt < MAX_RETRIES && error instanceof Error && error.message === 'Empty response from OpenRouter') {
+        continue
+      }
+      throw error
+    } finally {
+      clearTimeout(timeout)
     }
-
-    const data = await response.json()
-    const content = data.choices?.[0]?.message?.content
-
-    if (!content) {
-      throw new Error('Empty response from OpenRouter')
-    }
-
-    return content
-  } finally {
-    clearTimeout(timeout)
   }
+
+  throw new Error('Empty response from OpenRouter after retries')
 }
 
 /**
