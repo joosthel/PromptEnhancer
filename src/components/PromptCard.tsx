@@ -92,17 +92,18 @@ export default function PromptCard({
           <span className="text-[10px] font-mono text-neutral-400">{String(index + 1).padStart(2, '0')}</span>
           <span className="text-xs uppercase tracking-widest text-neutral-500 font-medium">{label}</span>
         </div>
-        <div className="flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-all flex-shrink-0">
+        <div className="flex items-center gap-1.5 flex-shrink-0">
           <button
             onClick={() => setFixOpen((o) => !o)}
             disabled={isFixing}
-            className="text-xs px-2 py-1 border border-neutral-200 rounded-sm text-neutral-400 hover:text-neutral-700 hover:border-neutral-300 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+            className="text-xs px-2 py-1 min-h-[44px] border border-neutral-200 rounded-sm text-neutral-400 hover:text-neutral-700 hover:border-neutral-300 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
           >
             {isFixing ? 'Fixing...' : fixOpen ? 'Close' : 'Fix'}
           </button>
           <button
             onClick={handleCopy}
-            className="text-xs px-2 py-1 border border-neutral-200 rounded-sm text-neutral-400 hover:text-neutral-700 hover:border-neutral-300 transition-all"
+            aria-label="Copy prompt"
+            className="text-xs px-2 py-1 min-h-[44px] border border-neutral-200 rounded-sm text-neutral-400 hover:text-neutral-700 hover:border-neutral-300 transition-all"
           >
             {copied ? 'Copied' : 'Copy'}
           </button>
@@ -119,6 +120,7 @@ export default function PromptCard({
             <span className="text-[10px] uppercase tracking-widest text-neutral-400">Negative</span>
             <button
               onClick={handleCopyNeg}
+              aria-label="Copy negative prompt"
               className="text-[10px] px-1.5 py-0.5 text-neutral-400 hover:text-neutral-600 transition-colors"
             >
               {copiedNeg ? 'Copied' : 'Copy'}

@@ -13,8 +13,13 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "PromptEnhancer",
-  description: "Generate Flux 2 image prompts from reference images and concept descriptions",
+  title: 'PromptEnhancer by Joost Helfers — AI Prompt Engineering',
+  description: 'Generate model-optimized prompts, develop creative briefs, and enhance existing prompts for commercial AI image and video production.',
+  openGraph: {
+    title: 'PromptEnhancer by Joost Helfers',
+    description: 'AI-powered prompt engineering for commercial image and video production',
+    type: 'website',
+  },
 };
 
 export default function RootLayout({

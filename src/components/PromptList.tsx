@@ -14,6 +14,7 @@ interface PromptListProps {
   activeModel: TargetModel
   activeMode: GenerationMode
   onPromptUpdate: (index: number, newPrompt: string) => void
+  displayMode?: 'full' | 'briefOnly'
 }
 
 export default function PromptList({
@@ -24,9 +25,10 @@ export default function PromptList({
   activeModel,
   activeMode,
   onPromptUpdate,
+  displayMode = 'full',
 }: PromptListProps) {
   const [showCues, setShowCues] = useState(false)
-  const [showBrief, setShowBrief] = useState(false)
+  const [showBrief, setShowBrief] = useState(displayMode === 'briefOnly')
   const [fixingSet, setFixingSet] = useState<Set<number>>(new Set())
   const [reformatLoading, setReformatLoading] = useState<Map<number, TargetModel>>(new Map())
   const [selectedSet, setSelectedSet] = useState<Set<number>>(new Set())
@@ -181,34 +183,44 @@ export default function PromptList({
   }
 
   return (
-    <div className="space-y-6">
-      <BatchActions
-        totalCount={prompts.length}
-        selectedCount={selectedSet.size}
-        onSelectAll={selectAll}
-        onDeselectAll={deselectAll}
-        onBatchFix={handleBatchFix}
-        isBatchFixing={isBatchFixing}
-      />
+    <div className="space-y-6 min-w-0">
+      {displayMode === 'full' && (
+        <BatchActions
+          totalCount={prompts.length}
+          selectedCount={selectedSet.size}
+          onSelectAll={selectAll}
+          onDeselectAll={deselectAll}
+          onBatchFix={handleBatchFix}
+          isBatchFixing={isBatchFixing}
+        />
+      )}
 
       {creativeBrief && (
         <div className="border border-neutral-200 rounded-sm">
-          <button
-            onClick={() => setShowBrief(!showBrief)}
-            className="w-full flex items-center justify-between px-4 py-3 text-left"
-          >
-            <span className="text-xs uppercase tracking-widest text-neutral-400">
-              Production Brief
-            </span>
-            <span className="text-neutral-400 text-sm">{showBrief ? '\u2212' : '+'}</span>
-          </button>
+          {displayMode === 'briefOnly' ? (
+            <div className="px-4 py-3">
+              <span className="text-xs uppercase tracking-widest text-neutral-400">
+                Production Brief
+              </span>
+            </div>
+          ) : (
+            <button
+              onClick={() => setShowBrief(!showBrief)}
+              className="w-full flex items-center justify-between px-4 py-3 text-left"
+            >
+              <span className="text-xs uppercase tracking-widest text-neutral-400">
+                Production Brief
+              </span>
+              <span className="text-neutral-400 text-sm">{showBrief ? '\u2212' : '+'}</span>
+            </button>
+          )}
 
           {showBrief && (
-            <div className="px-4 pb-4 space-y-3 border-t border-neutral-100">
+            <div className="px-4 pb-4 space-y-3 border-t border-neutral-100 min-w-0">
               {/* Creative Vision — shown prominently at top */}
               {creativeBrief.creativeVision && (
                 <div className="pt-3 space-y-2 pb-3 border-b border-neutral-100">
-                  <p className="text-xs text-neutral-800 leading-relaxed font-medium italic">&ldquo;{creativeBrief.creativeVision}&rdquo;</p>
+                  <p className="text-xs text-neutral-800 leading-relaxed font-medium italic break-words">&ldquo;{creativeBrief.creativeVision}&rdquo;</p>
                   {creativeBrief.visualMetaphor && (
                     <p className="text-[11px] text-neutral-500 leading-relaxed">{creativeBrief.visualMetaphor}</p>
                   )}
@@ -298,7 +310,7 @@ export default function PromptList({
 
               {/* Full brief */}
               <div className="pt-1 border-t border-neutral-100">
-                <p className="text-xs text-neutral-600 leading-relaxed whitespace-pre-line">{creativeBrief.fullBrief}</p>
+                <p className="text-xs text-neutral-600 leading-relaxed whitespace-pre-line break-words">{creativeBrief.fullBrief}</p>
               </div>
             </div>
           )}
@@ -350,7 +362,7 @@ export default function PromptList({
                   {visualStyleCues.emotionalTension}
                 </p>
               )}
-              <p className="text-xs text-neutral-600 leading-relaxed whitespace-pre-line">
+              <p className="text-xs text-neutral-600 leading-relaxed whitespace-pre-line break-words">
                 {visualStyleCues.description}
               </p>
             </div>
@@ -358,27 +370,29 @@ export default function PromptList({
         </div>
       )}
 
-      <div className="space-y-3">
-        {prompts.map((p, i) => (
-          <PromptCard
-            key={i}
-            label={p.label}
-            prompt={p.prompt}
-            negativePrompt={p.negativePrompt}
-            index={i}
-            activeModel={activeModel}
-            activeMode={activeMode}
-            history={promptHistory.get(i) ?? []}
-            isSelected={selectedSet.has(i)}
-            onToggleSelect={() => toggleSelect(i)}
-            onFix={(fixCategory, customNote) => handleFix(i, fixCategory, customNote)}
-            onRestore={(historyIndex) => handleRestore(i, historyIndex)}
-            onModelReformat={(toModel) => handleReformat(i, toModel)}
-            isFixing={fixingSet.has(i)}
-            reformatLoadingModel={reformatLoading.get(i) ?? null}
-          />
-        ))}
-      </div>
+      {displayMode === 'full' && (
+        <div className="space-y-3">
+          {prompts.map((p, i) => (
+            <PromptCard
+              key={i}
+              label={p.label}
+              prompt={p.prompt}
+              negativePrompt={p.negativePrompt}
+              index={i}
+              activeModel={activeModel}
+              activeMode={activeMode}
+              history={promptHistory.get(i) ?? []}
+              isSelected={selectedSet.has(i)}
+              onToggleSelect={() => toggleSelect(i)}
+              onFix={(fixCategory, customNote) => handleFix(i, fixCategory, customNote)}
+              onRestore={(historyIndex) => handleRestore(i, historyIndex)}
+              onModelReformat={(toModel) => handleReformat(i, toModel)}
+              isFixing={fixingSet.has(i)}
+              reformatLoadingModel={reformatLoading.get(i) ?? null}
+            />
+          ))}
+        </div>
+      )}
     </div>
   )
 }

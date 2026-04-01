@@ -12,20 +12,24 @@ const LABEL_PRESETS = ['style reference', 'subject', 'face', 'background', 'comp
 interface ImageUploaderProps {
   images: ImageInput[]
   imageLabels: ImageLabel[]
+  maxImages?: number
   onChange: (images: ImageInput[]) => void
   onLabelsChange: (labels: ImageLabel[]) => void
 }
 
-export default function ImageUploader({ images, imageLabels, onChange, onLabelsChange }: ImageUploaderProps) {
+export default function ImageUploader({ images, imageLabels, maxImages, onChange, onLabelsChange }: ImageUploaderProps) {
   const [dragging, setDragging] = useState(false)
   const [urlInput, setUrlInput] = useState('')
   const [urlError, setUrlError] = useState('')
+  const [fileSizeError, setFileSizeError] = useState('')
   const [editingLabel, setEditingLabel] = useState<number | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
+  const limit = maxImages ?? MAX_IMAGES
+
   const addImages = useCallback(
     async (files: File[]) => {
-      const remaining = MAX_IMAGES - images.length
+      const remaining = limit - images.length
       if (remaining <= 0) return
 
       const toProcess = files.slice(0, remaining)
@@ -34,7 +38,8 @@ export default function ImageUploader({ images, imageLabels, onChange, onLabelsC
       for (const file of toProcess) {
         if (!file.type.startsWith('image/')) continue
         if (file.size > MAX_FILE_SIZE_MB * 1024 * 1024) {
-          alert(`${file.name} exceeds ${MAX_FILE_SIZE_MB}MB limit and was skipped.`)
+          setFileSizeError(`${file.name} exceeds ${MAX_FILE_SIZE_MB}MB limit and was skipped.`)
+          setTimeout(() => setFileSizeError(''), 5000)
           continue
         }
         const img = await fileToImageInput(file)
@@ -45,7 +50,7 @@ export default function ImageUploader({ images, imageLabels, onChange, onLabelsC
         onChange([...images, ...results])
       }
     },
-    [images, onChange]
+    [images, onChange, limit]
   )
 
   useEffect(() => {
@@ -91,8 +96,8 @@ export default function ImageUploader({ images, imageLabels, onChange, onLabelsC
       setUrlError('Please enter a valid URL')
       return
     }
-    if (images.length >= MAX_IMAGES) {
-      setUrlError(`Maximum ${MAX_IMAGES} images allowed`)
+    if (images.length >= limit) {
+      setUrlError(`Maximum ${limit} images allowed`)
       return
     }
 
@@ -123,14 +128,14 @@ export default function ImageUploader({ images, imageLabels, onChange, onLabelsC
     return imageLabels.find(l => l.index === index)?.label ?? ''
   }
 
-  const atLimit = images.length >= MAX_IMAGES
+  const atLimit = images.length >= limit
 
   return (
     <div className="space-y-3">
       <label className="block text-xs uppercase tracking-widest text-neutral-400">
         Reference Images
         <span className="ml-2 text-neutral-300 normal-case tracking-normal">
-          ({images.length}/{MAX_IMAGES})
+          ({images.length}/{limit})
         </span>
       </label>
 
@@ -162,6 +167,8 @@ export default function ImageUploader({ images, imageLabels, onChange, onLabelsC
           </p>
         </div>
       )}
+
+      {fileSizeError && <p role="alert" className="text-xs text-red-500">{fileSizeError}</p>}
 
       {images.length > 0 && (
         <div className="flex flex-wrap gap-2">
@@ -224,8 +231,8 @@ export default function ImageUploader({ images, imageLabels, onChange, onLabelsC
                 {/* Remove button */}
                 <button
                   onClick={() => removeImage(i)}
-                  className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-neutral-800 text-white text-[10px] leading-none flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                  title="Remove"
+                  aria-label="Remove image"
+                  className="absolute -top-2 -right-2 w-5 h-5 min-w-[44px] min-h-[44px] rounded-full bg-neutral-800 text-white text-[10px] leading-none flex items-center justify-center opacity-70 hover:opacity-100 transition-opacity"
                 >
                   ×
                 </button>
@@ -246,7 +253,7 @@ export default function ImageUploader({ images, imageLabels, onChange, onLabelsC
           onKeyDown={(e) => e.key === 'Enter' && handleAddUrl()}
           placeholder="https://... (image URL)"
           disabled={atLimit}
-          className="flex-1 border border-neutral-200 rounded-sm px-3 py-2 text-sm bg-white focus:outline-none focus:border-neutral-400 placeholder:text-neutral-300 disabled:opacity-40"
+          className="flex-1 border border-neutral-200 rounded-sm px-3 py-2 text-sm bg-white focus:outline-none focus:border-neutral-400 placeholder:text-neutral-400 disabled:opacity-40"
         />
         <button
           onClick={handleAddUrl}

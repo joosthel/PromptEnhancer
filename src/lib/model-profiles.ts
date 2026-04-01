@@ -17,6 +17,18 @@ export const GENERATION_MODES: Array<{ id: GenerationMode; label: string }> = [
 ]
 
 // ---------------------------------------------------------------------------
+// App Modes (top-level UI modes)
+// ---------------------------------------------------------------------------
+
+export type AppMode = 'enhance' | 'generate' | 'artdirection'
+
+export const APP_MODES: Array<{ id: AppMode; label: string; tagline: string }> = [
+  { id: 'enhance', label: 'Prompt Enhancement', tagline: 'Optimize an existing prompt for any model' },
+  { id: 'generate', label: 'Prompt Generation', tagline: 'Reference images + description to model-specific prompts' },
+  { id: 'artdirection', label: 'Art Direction', tagline: 'Develop creative briefs and visual narratives' },
+]
+
+// ---------------------------------------------------------------------------
 // Target Models
 // ---------------------------------------------------------------------------
 
@@ -31,6 +43,7 @@ export type TargetModel =
 export interface ModelProfile {
   id: TargetModel
   label: string
+  description: string
   modes: GenerationMode[]
   promptFormat: 'natural' | 'structured' | 'conversational'
   optimalLengthMin: number
@@ -47,6 +60,7 @@ export const MODEL_PROFILES: Record<TargetModel, ModelProfile> = {
   'nanobanana-2': {
     id: 'nanobanana-2',
     label: 'NanoBanana 2',
+    description: 'Fast and flexible. Up to 14 reference images with character consistency.',
     modes: ['generate', 'edit'],
     promptFormat: 'conversational',
     optimalLengthMin: 30,
@@ -74,6 +88,7 @@ export const MODEL_PROFILES: Record<TargetModel, ModelProfile> = {
   'flux-2-klein-9b': {
     id: 'flux-2-klein-9b',
     label: 'Flux 2 Klein 9B',
+    description: 'Best for cinematic stills. Keep prompts concise (50-100 words).',
     modes: ['generate', 'edit'],
     promptFormat: 'natural',
     optimalLengthMin: 50,
@@ -134,6 +149,7 @@ NO negative prompts. NO prompt weights. NO meta-language ("a photograph of").
   'veo-3-1': {
     id: 'veo-3-1',
     label: 'Veo 3.1',
+    description: 'Google video. Structured scenes with camera, dialogue, and audio.',
     modes: ['video'],
     promptFormat: 'natural',
     optimalLengthMin: 50,
@@ -157,6 +173,7 @@ NO negative prompts. NO prompt weights. NO meta-language ("a photograph of").
   'kling-v3': {
     id: 'kling-v3',
     label: 'Kling v3',
+    description: 'Multi-shot video with character labels and temporal markers.',
     modes: ['video'],
     promptFormat: 'structured',
     optimalLengthMin: 60,
@@ -178,6 +195,7 @@ NO negative prompts. NO prompt weights. NO meta-language ("a photograph of").
   'kling-o3': {
     id: 'kling-o3',
     label: 'Kling o3',
+    description: 'Enhanced Kling with deeper scene understanding for complex sequences.',
     modes: ['video'],
     promptFormat: 'structured',
     optimalLengthMin: 60,
@@ -200,6 +218,7 @@ NO negative prompts. NO prompt weights. NO meta-language ("a photograph of").
   'ltxv-2-3': {
     id: 'ltxv-2-3',
     label: 'LTX-Video 2.3',
+    description: 'High-resolution video (up to 4K). Flowing present-tense with audio.',
     modes: ['video'],
     promptFormat: 'natural',
     optimalLengthMin: 80,
@@ -260,6 +279,12 @@ Specify relative to subject: "as the camera rises, the subject shrinks against t
 
 export function getModelsForMode(mode: GenerationMode): ModelProfile[] {
   return Object.values(MODEL_PROFILES).filter(m => m.modes.includes(mode))
+}
+
+export function getModelsForAppMode(appMode: AppMode, subMode: GenerationMode): ModelProfile[] {
+  if (appMode === 'artdirection') return Object.values(MODEL_PROFILES).filter(m => m.modes.includes('generate'))
+  if (appMode === 'enhance') return getModelsForMode(subMode)
+  return getModelsForMode(subMode)
 }
 
 export function getDefaultModelForMode(mode: GenerationMode): TargetModel {

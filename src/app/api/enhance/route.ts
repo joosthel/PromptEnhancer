@@ -11,6 +11,7 @@ import { callOpenRouter, parseJsonResponse, ContentPart } from '@/lib/openrouter
 import { GEMINI_VISION_PROMPT, UserInputs, VisualStyleCues } from '@/lib/system-prompt'
 import { buildEnhanceSystemPrompt, buildEnhanceUserMessage } from '@/lib/prompt-engine'
 import { TargetModel, GenerationMode } from '@/lib/model-profiles'
+import { ImageLabel } from '@/lib/system-prompt'
 
 export const maxDuration = 180
 
@@ -21,6 +22,8 @@ export interface EnhanceRequest {
   >
   targetModel?: TargetModel
   mode?: GenerationMode
+  imageLabels?: ImageLabel[]
+  cachedVisionCues?: VisualStyleCues
 }
 
 export interface EnhanceResponse {
@@ -42,7 +45,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const body: EnhanceRequest = await request.json()
-    const { prompt, images, targetModel: rawTargetModel, mode: rawMode } = body
+    const { prompt, images, targetModel: rawTargetModel, mode: rawMode, imageLabels, cachedVisionCues } = body
     const targetModel: TargetModel = rawTargetModel ?? 'flux-2-klein-9b'
     const mode: GenerationMode = rawMode ?? 'generate'
 
@@ -57,7 +60,7 @@ export async function POST(request: NextRequest) {
     const hasImages = Array.isArray(images) && images.length > 0
 
     // Step 1 (optional): Vision analysis for style reference
-    if (hasImages) {
+    if (hasImages && !cachedVisionCues) {
       const imageContentParts: ContentPart[] = images.map((img) => {
         if (img.type === 'base64') {
           return {
@@ -85,10 +88,12 @@ export async function POST(request: NextRequest) {
       } catch {
         console.error('Vision analysis parse failed, continuing without style cues')
       }
+    } else if (cachedVisionCues) {
+      visualStyleCues = cachedVisionCues
     }
 
     // Step 2: Enhance the prompt
-    const userMessage = buildEnhanceUserMessage(prompt, targetModel, mode, visualStyleCues)
+    const userMessage = buildEnhanceUserMessage(prompt, targetModel, mode, visualStyleCues, imageLabels)
 
     const enhanceResponse = await callOpenRouter({
       model: 'deepseek/deepseek-v3.2',
@@ -118,7 +123,9 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(response)
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'An unexpected error occurred'
+    const message = error instanceof Error
+      ? (error.message.startsWith('OpenRouter API error') ? 'Generation failed. Please try again.' : error.message)
+      : 'An unexpected error occurred'
     return NextResponse.json({ error: message }, { status: 500 })
   }
 }

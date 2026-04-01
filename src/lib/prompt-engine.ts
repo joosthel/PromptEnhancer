@@ -448,8 +448,7 @@ REFERENCE IMAGE AWARENESS:
 - "background" → use as the environment, replace or modify the foreground
 - Unlabeled references → infer purpose from the user's description
 
-${QWEN_ENCODER_RULES}
-
+${targetModel === 'flux-2-klein-9b' ? QWEN_ENCODER_RULES + '\n' : ''}
 ${FORBIDDEN_LANGUAGE}
 
 OUTPUT: Return ONLY valid JSON:
@@ -853,15 +852,14 @@ ${CINEMATIC_PROMPT_STYLE}
 
 ${NATURALISM_VOCABULARY}
 
-${QWEN_ENCODER_RULES}
-
+${targetModel === 'flux-2-klein-9b' ? QWEN_ENCODER_RULES + '\n' : ''}
 ${FORBIDDEN_LANGUAGE}
 
 WHAT TO PRESERVE:
 - The subject, scene, and emotional register
 - Any specific details the user clearly intended (poses, objects, spatial relationships)
 - The user's creative voice — enhance it, don't replace it
-
+${mode === 'edit' ? '- All explicit image references (image 1, image 2, etc.) — these map to the user\'s uploaded reference images and MUST remain in the output\n' : ''}
 WHAT TO CHANGE:
 - Vague language → specific, descriptive language (what the camera sees, how surfaces respond to light)
 - Keyword lists → complete sentences with semantic relationships
@@ -870,7 +868,14 @@ WHAT TO CHANGE:
 - Missing texture → organic imperfection cues (grain, pores, wear)
 - Wrong length → compress or expand to ${profile.optimalLengthMin}-${profile.optimalLengthMax} words
 - Name-dropping (cinematographers, directors, film titles) → describe the visual quality instead
-
+${mode === 'edit' ? `
+EDIT-SPECIFIC RULES:
+- The user has uploaded numbered reference images. The enhanced prompt MUST explicitly reference these images by number.
+- Use phrases like "Using image 1 as the base scene, ..." or "Preserve the subject from image 2, ..." or "Apply the lighting style from image 3."
+- If the user's prompt already references images, keep those references intact and enhance the surrounding description.
+- If the user's prompt does NOT reference images but image labels are provided, ADD explicit image references based on the labels.
+- The output prompt must describe the DESIRED RESULT, not the transformation steps.
+` : ''}
 OUTPUT: Return ONLY valid JSON: { "prompt": "the enhanced prompt" }`
 }
 
@@ -878,7 +883,8 @@ export function buildEnhanceUserMessage(
   rawPrompt: string,
   targetModel: TargetModel,
   mode: GenerationMode,
-  visualStyleCues?: VisualStyleCues
+  visualStyleCues?: VisualStyleCues,
+  imageLabels?: ImageLabel[]
 ): string {
   const profile = MODEL_PROFILES[targetModel]
   const lines: string[] = []
@@ -888,6 +894,15 @@ export function buildEnhanceUserMessage(
   lines.push('')
   lines.push(`Target: ${profile.label} (${mode} mode)`)
   lines.push(`Optimal length: ${profile.optimalLengthMin}-${profile.optimalLengthMax} words`)
+
+  if (imageLabels && imageLabels.length > 0 && mode === 'edit') {
+    lines.push('\n=== REFERENCE IMAGE MAP ===')
+    lines.push('The user uploaded these labeled reference images:')
+    for (const il of imageLabels) {
+      lines.push(`  Image ${il.index + 1}: ${il.label}`)
+    }
+    lines.push('The enhanced prompt MUST reference these images by number and describe how each should be used in the final result.')
+  }
 
   if (visualStyleCues) {
     lines.push('\n=== VISUAL REFERENCE (from uploaded images — use as style guide) ===')

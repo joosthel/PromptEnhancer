@@ -26,8 +26,8 @@ export type LoadingPhase = 'analyzing' | 'briefing' | 'generating'
 
 const PHASE_LABEL: Record<LoadingPhase, string> = {
   analyzing: 'Analyzing references',
-  briefing:  'Locking brief',
-  generating: 'Deriving prompts',
+  briefing:  'Building brief',
+  generating: 'Generating prompts',
 }
 
 export default function LoadingAnimation({ phase }: { phase: LoadingPhase }) {

@@ -90,3 +90,18 @@ export function isValidImageUrl(url: string): boolean {
     return false
   }
 }
+
+/**
+ * Computes a stable fingerprint for a set of images.
+ * Used to detect when images have changed so vision analysis cache can be invalidated.
+ * Deliberately lightweight — avoids cryptographic hashing since we only need equality.
+ */
+export function computeImageFingerprint(images: ImageInput[]): string {
+  const parts = images.map((img) => {
+    if (img.type === 'base64') {
+      return `b64:${img.data.length}:${img.data.slice(0, 32)}`
+    }
+    return `url:${img.url}`
+  })
+  return parts.join('|')
+}

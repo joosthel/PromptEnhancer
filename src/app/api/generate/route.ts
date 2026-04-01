@@ -15,6 +15,8 @@ export interface GenerateRequest {
   targetModel?: TargetModel
   mode?: GenerationMode
   imageLabels?: ImageLabel[]
+  cachedVisionCues?: VisualStyleCues
+  briefOnly?: boolean
 }
 
 export interface GenerateResponse {
@@ -37,7 +39,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const body: GenerateRequest = await request.json()
-    const { images, userInputs, promptCount, targetModel: rawTargetModel, mode: rawMode, imageLabels } = body
+    const { images, userInputs, promptCount, targetModel: rawTargetModel, mode: rawMode, imageLabels, cachedVisionCues } = body
     const targetModel: TargetModel = rawTargetModel ?? 'flux-2-klein-9b'
     const mode: GenerationMode = rawMode ?? 'generate'
 
@@ -64,7 +66,7 @@ export async function POST(request: NextRequest) {
     // -----------------------------------------------------------------------
     // Step 1: Vision analysis — find connecting concepts across reference images
     // -----------------------------------------------------------------------
-    if (hasImages) {
+    if (hasImages && !cachedVisionCues) {
       const imageContentParts: ContentPart[] = images.map((img) => {
         if (img.type === 'base64') {
           return {
@@ -92,6 +94,8 @@ export async function POST(request: NextRequest) {
       } catch {
         console.error('Vision analysis parse failed, continuing without style cues')
       }
+    } else if (cachedVisionCues) {
+      visualStyleCues = cachedVisionCues
     }
 
     // -----------------------------------------------------------------------
@@ -117,6 +121,11 @@ export async function POST(request: NextRequest) {
       } catch {
         console.error('Brief generation parse failed, continuing without brief')
       }
+    }
+
+    // Early return for Art Direction mode — brief only, no prompt derivation
+    if (body.briefOnly) {
+      return NextResponse.json({ creativeBrief, visualStyleCues })
     }
 
     // -----------------------------------------------------------------------
@@ -158,7 +167,9 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(response)
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'An unexpected error occurred'
+    const message = error instanceof Error
+      ? (error.message.startsWith('OpenRouter API error') ? 'Generation failed. Please try again.' : error.message)
+      : 'An unexpected error occurred'
     return NextResponse.json({ error: message }, { status: 500 })
   }
 }

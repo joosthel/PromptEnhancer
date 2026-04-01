@@ -43,7 +43,7 @@ export async function callOpenRouter(options: OpenRouterOptions): Promise<string
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${options.apiKey}`,
-        'HTTP-Referer': 'http://localhost:3000',
+        'HTTP-Referer': process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000',
         'X-Title': 'PromptEnhancer',
       },
       body: JSON.stringify({

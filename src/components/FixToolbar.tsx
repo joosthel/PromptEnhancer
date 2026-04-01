@@ -42,7 +42,7 @@ export default function FixToolbar({ onFix, isFixing }: FixToolbarProps) {
           }}
           placeholder="Or describe: make it warmer, add rain, shift to dusk..."
           disabled={isFixing}
-          className="flex-1 border border-neutral-200 rounded-sm px-2.5 py-1 text-xs bg-white focus:outline-none focus:border-neutral-400 placeholder:text-neutral-300 disabled:opacity-40"
+          className="flex-1 border border-neutral-200 rounded-sm px-2.5 py-1 text-xs bg-white focus:outline-none focus:border-neutral-400 placeholder:text-neutral-400 disabled:opacity-40"
         />
         <button
           onClick={handleCustomSubmit}

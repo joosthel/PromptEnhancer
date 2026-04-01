@@ -87,7 +87,7 @@ export default function BatchActions({
               }}
               placeholder="Describe fix..."
               disabled={isBatchFixing}
-              className="border border-neutral-200 rounded-sm px-2 py-0.5 text-xs bg-white focus:outline-none focus:border-neutral-400 placeholder:text-neutral-300 disabled:opacity-40 w-40"
+              className="border border-neutral-200 rounded-sm px-2 py-0.5 text-xs bg-white focus:outline-none focus:border-neutral-400 placeholder:text-neutral-400 disabled:opacity-40 w-40"
             />
             <button
               onClick={handleCustomSubmit}

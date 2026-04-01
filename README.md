@@ -1,6 +1,6 @@
 # PromptEnhancer
 
-Generate cinematic [Flux 2 \[pro\]](https://blackforestlabs.ai/) image prompts from reference images and concept descriptions. Upload a moodboard, describe a vibe, and get production-ready prompts written like a senior Director of Photography.
+AI prompt engineering for image and video production. By [Joost Helfers](https://joosthelfers.com/).
 
 ![Next.js](https://img.shields.io/badge/Next.js-16-black) ![TypeScript](https://img.shields.io/badge/TypeScript-5-blue) ![Tailwind](https://img.shields.io/badge/Tailwind-4-38bdf8)
 
@@ -8,12 +8,28 @@ Generate cinematic [Flux 2 \[pro\]](https://blackforestlabs.ai/) image prompts f
 
 ## What it does
 
-PromptEnhancer runs a two-step AI pipeline via [OpenRouter](https://openrouter.ai):
+PromptEnhancer generates model-optimized prompts for commercial AI image and video production. It runs a three-step pipeline via [OpenRouter](https://openrouter.ai):
 
-1. **Visual analysis** — Upload reference images and Gemini 2.5 Flash extracts abstract aesthetic properties: colour palette, light quality, compositional energy, atmosphere, cinematic style. Subjects, faces, and locations are deliberately ignored — only the *feel* is captured.
-2. **Prompt generation** — MiniMax M2.5 writes 3–6 Flux 2 [pro] prompts in the voice of a senior Director of Photography. Think Denis Villeneuve's restraint, Roger Deakins' mastery of practical light, David Lynch's quiet wrongness. Each prompt is 70–120 words, specifies a lens, depth of field, lighting quality, and a distinct camera angle.
+1. **Vision Analysis** — An AI vision model reads your reference images and extracts color palette, lighting, texture, and emotional tone.
+2. **Creative Brief** — A planning model develops a production brief: creative vision, visual metaphor, shot diversity, and color anchors.
+3. **Prompt Derivation** — Prompts are derived from the brief, formatted for the target model's specific strengths and syntax.
 
-Results appear as cards. Hover any card to **Copy** or **Revise** it — the revision panel lets you describe what should change ("make it warmer", "shift to dusk", "add rain") and rewrites only that prompt in-place.
+### Three modes
+
+- **Prompt Enhancement** — Paste an existing prompt and optimize it for a specific model. The enhancer restructures, expands, and adapts your prompt.
+- **Prompt Generation** — The full pipeline. Upload reference images, describe your concept, and generate diverse model-specific prompts. Supports Generate (text-to-image), Edit (image-to-image), and Video sub-modes.
+- **Art Direction** — Develop creative briefs and visual narratives without generating final prompts. Get a creative vision, visual metaphor, shot diversity matrix, and color anchors.
+
+### Supported models
+
+| Model | Type | Description |
+|---|---|---|
+| **Flux 2 Klein 9B** | Image | Best for cinematic stills. Keep prompts concise (50-100 words). |
+| **NanoBanana 2** | Image | Fast and flexible. Up to 14 reference images with character consistency. |
+| **Veo 3.1** | Video | Google video. Structured scenes with camera, dialogue, and audio. |
+| **Kling v3** | Video | Multi-shot video with character labels and temporal markers. |
+| **Kling o3** | Video | Enhanced Kling with deeper scene understanding for complex sequences. |
+| **LTX-Video 2.3** | Video | High-resolution video (up to 4K). Flowing present-tense with audio. |
 
 ---
 
@@ -22,7 +38,7 @@ Results appear as cards. Hover any card to **Copy** or **Revise** it — the rev
 ### Prerequisites
 
 - [Node.js](https://nodejs.org) (v18 or later)
-- An [OpenRouter](https://openrouter.ai) API key (both models used are available on the free tier)
+- An [OpenRouter](https://openrouter.ai) API key
 
 ### 1. Clone and install
 
@@ -68,11 +84,13 @@ npm run dev
 
 ## Usage
 
-1. **Add reference images** (optional) — drag and drop, click to browse, paste from clipboard, or enter a URL. Up to 10 images, max 10 MB each. Images are compressed client-side before sending.
-2. **Describe your concept** (optional) — fill in any combination of Storyline, Subject, Environment, and Mood. All fields are optional; you can use images alone, text alone, or both.
-3. **Choose a prompt count** — 3, 4, 5, or 6 prompts.
-4. **Generate** — the pipeline runs server-side. With images, expect ~15–30 seconds for the vision step plus generation. Text-only is faster.
-5. **Revise** — hover any result card, click Revise, describe what should change, and Apply. Only that card updates.
+1. **Choose a mode** — Select Prompt Enhancement, Prompt Generation, or Art Direction from the left panel.
+2. **Select a target model** — Pick the AI model you're generating prompts for.
+3. **Add reference images** (optional) — Drag and drop, click to browse, paste from clipboard, or enter a URL. Click thumbnails to label images (style reference, subject, face, background).
+4. **Describe your concept** — Fill in the text area. All modes accept freeform descriptions.
+5. **Set prompt count** (Generation/Art Direction) — Choose 1-6 prompts for diversity.
+6. **Generate** — The pipeline runs server-side. Reference images are cached, so re-generating with the same images skips the vision step.
+7. **Refine** — Use Fix buttons on individual prompt cards to iterate without re-running the full pipeline (Hands, Lighting, Too AI, Mood, or custom notes).
 
 ---
 
@@ -85,7 +103,7 @@ npm run dev
 | Styling | Tailwind CSS 4 |
 | AI Gateway | [OpenRouter](https://openrouter.ai) |
 | Vision model | `google/gemini-2.5-flash` |
-| Text model | `minimax/minimax-m2.5` |
+| Planning model | `deepseek/deepseek-v3.2` |
 
 No database. No auth. No extra npm packages beyond the Next.js scaffold.
 
@@ -96,22 +114,35 @@ No database. No auth. No extra npm packages beyond the Next.js scaffold.
 ```
 src/
   app/
-    page.tsx                  # Main page — state, generate + update handlers
-    layout.tsx                # Root layout
-    globals.css               # Global styles
+    page.tsx                  # Main page — state, mode logic, generation handlers
+    layout.tsx                # Root layout, metadata, fonts
+    globals.css               # Global styles, accessibility rules
     api/
-      generate/route.ts       # Two-step pipeline: Gemini vision → MiniMax generation
-      revise/route.ts         # Single-card revision: MiniMax rewrite
+      generate/route.ts       # Three-step pipeline: vision → brief → prompts
+      enhance/route.ts        # Single-step prompt enhancement
+      fix/route.ts            # Single-card fix/revision
+      reformat/route.ts       # Cross-model prompt reformatting
   components/
-    ApiKeyInput.tsx           # Optional client-side API key input
-    ImageUploader.tsx         # Drag-drop, paste, URL input
-    InputForm.tsx             # Storyline / Subject / Environment / Mood fields
-    PromptList.tsx            # Revision orchestration, visual style panel
-    PromptCard.tsx            # Prompt display, copy, inline revise UI
+    ModeSelector.tsx          # Three app modes + sub-mode chips
+    ModelSelector.tsx         # Target model cards with descriptions
+    ImageUploader.tsx         # Drag-drop, paste, URL input, image labeling
+    InputForm.tsx             # Description textarea + prompt count
+    PromptList.tsx            # Results: brief, visual analysis, prompt cards
+    PromptCard.tsx            # Individual prompt with copy, fix, reformat
+    FixToolbar.tsx            # Fix category chips + custom input
+    FixHistory.tsx            # Prompt revision history
+    ModelChips.tsx            # Cross-model reformat chips per card
+    BatchActions.tsx          # Select all, batch fix operations
+    LoadingAnimation.tsx      # Dot-ring loading with phase labels
+    CreditPopup.tsx           # API credit acknowledgment popup
+    HelpModal.tsx             # How-it-works documentation modal
   lib/
-    openrouter.ts             # Typed fetch wrapper + JSON parser
-    system-prompt.ts          # All prompt builders and shared types
-    image-utils.ts            # Canvas resize/compress, clipboard, URL validation
+    openrouter.ts             # Typed fetch wrapper for OpenRouter API
+    system-prompt.ts          # Vision prompt, types, shared constants
+    prompt-engine.ts          # System prompt + user message builders
+    model-profiles.ts         # Model definitions, modes, fix categories
+    image-utils.ts            # Canvas resize, clipboard, URL validation, fingerprinting
+    use-focus-trap.ts         # Shared focus trap hook for modals
 ```
 
 ---
@@ -121,6 +152,7 @@ src/
 | Variable | Required | Description |
 |---|---|---|
 | `OPENROUTER_API_KEY` | Yes | Your [OpenRouter](https://openrouter.ai) API key — stored server-side only |
+| `NEXT_PUBLIC_SITE_URL` | No | Production URL (defaults to `http://localhost:3000`) |
 
 ---
 
