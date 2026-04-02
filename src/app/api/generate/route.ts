@@ -16,6 +16,7 @@ export interface GenerateRequest {
   mode?: GenerationMode
   imageLabels?: ImageLabel[]
   cachedVisionCues?: VisualStyleCues
+  cachedBrief?: CreativeBrief
   briefOnly?: boolean
 }
 
@@ -100,10 +101,11 @@ export async function POST(request: NextRequest) {
 
     // -----------------------------------------------------------------------
     // Step 2: Creative brief — locked production document
-    // Runs for generate and video modes (where consistency matters most)
-    // Also runs for edit mode if user provided a description
+    // Skip if a cached brief was provided (e.g. from Art Direction)
     // -----------------------------------------------------------------------
-    if (mode === 'generate' || mode === 'video' || (mode === 'edit' && hasUserInputs)) {
+    if (body.cachedBrief) {
+      creativeBrief = body.cachedBrief
+    } else if (mode === 'generate' || mode === 'video' || (mode === 'edit' && hasUserInputs)) {
       const briefUserMessage = buildBriefUserMessage(userInputs, mode, promptCount, visualStyleCues, imageLabels)
 
       const briefResponse = await callOpenRouter({

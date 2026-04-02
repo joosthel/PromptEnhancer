@@ -66,6 +66,9 @@ export default function Home() {
   const [helpOpen, setHelpOpen] = useState(false)
   const [showIntro, setShowIntro] = useState(false)
 
+  // Art Direction brief — persists across mode switches so it can be reused for generation
+  const [artBrief, setArtBrief] = useState<{ brief: CreativeBrief; cues?: VisualStyleCues } | null>(null)
+
   useEffect(() => {
     if (!localStorage.getItem('pe_intro_seen')) {
       setShowIntro(true)
@@ -107,6 +110,11 @@ export default function Home() {
       setActiveMode('generate')
       setActiveModel(DEFAULT_MODEL)
     }
+    // Clear prompt results when switching modes (but keep artBrief)
+    if (mode !== appMode) {
+      setResult(null)
+      setLoadingPhase('idle')
+    }
   }
 
   function handleSubModeChange(mode: GenerationMode) {
@@ -129,6 +137,73 @@ export default function Home() {
   function handleCreditCancel() {
     setShowCreditPopup(false)
     pendingAction.current = null
+  }
+
+  /** Generate prompts from the Art Direction brief — switch to generate/video mode and use cached brief */
+  function handleGenerateFromBrief(subMode: GenerationMode) {
+    if (!artBrief) return
+    setAppMode('generate')
+    setActiveMode(subMode)
+    setActiveModel(getDefaultModelForMode(subMode))
+    setResult(null)
+
+    // Trigger generation with the cached brief after state update
+    setTimeout(() => {
+      pendingAction.current = () => handleGenerateWithBrief(subMode, artBrief.brief)
+      setShowCreditPopup(true)
+    }, 0)
+  }
+
+  async function handleGenerateWithBrief(mode: GenerationMode, brief: CreativeBrief) {
+    const hasImages = images.length > 0
+    const fingerprint = hasImages ? computeImageFingerprint(images) : ''
+    const hasCachedCues = hasImages && visionCache?.fingerprint === fingerprint
+    const targetModel = getDefaultModelForMode(mode)
+
+    setError(null)
+    setResult(null)
+    setLoadingPhase('generating')
+
+    try {
+      const serializedImages = images.map((img) => {
+        if (img.type === 'base64') {
+          return { type: 'base64' as const, data: img.data, mimeType: img.mimeType }
+        }
+        return { type: 'url' as const, url: img.url }
+      })
+
+      const response = await fetch('/api/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          images: hasCachedCues ? [] : serializedImages,
+          cachedVisionCues: hasCachedCues ? visionCache!.cues : undefined,
+          cachedBrief: brief,
+          userInputs,
+          promptCount,
+          targetModel,
+          mode,
+          imageLabels: imageLabels.length > 0 ? imageLabels : undefined,
+        }),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error ?? `Request failed with status ${response.status}`)
+      }
+
+      setResult(data as GenerateResult)
+
+      if (data.visualStyleCues && !hasCachedCues && hasImages) {
+        setVisionCache({ fingerprint, cues: data.visualStyleCues })
+      }
+
+      setLoadingPhase('done')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'An unexpected error occurred')
+      setLoadingPhase('idle')
+    }
   }
 
   async function handleEnhance() {
@@ -214,6 +289,7 @@ export default function Home() {
 
     const fingerprint = hasImages ? computeImageFingerprint(images) : ''
     const hasCachedCues = hasImages && visionCache?.fingerprint === fingerprint
+    const isBriefOnly = appMode === 'artdirection'
 
     setError(null)
     setResult(null)
@@ -223,11 +299,11 @@ export default function Home() {
     let promptTimer: ReturnType<typeof setTimeout> | null = null
     if (hasImages && !hasCachedCues) {
       briefTimer = setTimeout(() => setLoadingPhase('briefing'), 7000)
-      if (appMode !== 'artdirection') {
+      if (!isBriefOnly) {
         promptTimer = setTimeout(() => setLoadingPhase('generating'), 14000)
       }
     } else {
-      if (appMode !== 'artdirection') {
+      if (!isBriefOnly) {
         promptTimer = setTimeout(() => setLoadingPhase('generating'), 6000)
       }
     }
@@ -251,7 +327,7 @@ export default function Home() {
           targetModel: activeModel,
           mode: activeMode,
           imageLabels: imageLabels.length > 0 ? imageLabels : undefined,
-          briefOnly: appMode === 'artdirection' ? true : undefined,
+          briefOnly: isBriefOnly ? true : undefined,
         }),
       })
 
@@ -261,7 +337,16 @@ export default function Home() {
         throw new Error(data.error ?? `Request failed with status ${response.status}`)
       }
 
-      setResult(data as GenerateResult)
+      if (isBriefOnly) {
+        // Art Direction: store brief separately, don't set as prompt result
+        setArtBrief({
+          brief: data.creativeBrief,
+          cues: data.visualStyleCues,
+        })
+        setResult(null)
+      } else {
+        setResult(data as GenerateResult)
+      }
 
       if (data.visualStyleCues && !hasCachedCues && hasImages) {
         setVisionCache({ fingerprint, cues: data.visualStyleCues })
@@ -292,8 +377,9 @@ export default function Home() {
 
   const isLoading = loadingPhase === 'analyzing' || loadingPhase === 'briefing' || loadingPhase === 'generating'
   const hasPrompts = result && result.prompts && result.prompts.length > 0
-  // Center column opens for loading or when we have prompts to show
-  const showCenter = isLoading || !!hasPrompts
+  const hasArtBrief = appMode === 'artdirection' && !!artBrief
+  // Center column opens for loading, prompt results, or Art Direction brief
+  const showCenter = isLoading || !!hasPrompts || hasArtBrief
 
   const loadingText =
     loadingPhase === 'analyzing'
@@ -305,7 +391,7 @@ export default function Home() {
           : ''
 
   const generateLabel = appMode === 'enhance' ? 'Enhance Prompt'
-    : appMode === 'artdirection' ? 'Develop Brief'
+    : appMode === 'artdirection' ? (artBrief ? 'Regenerate Brief' : 'Develop Brief')
     : activeMode === 'edit' ? 'Generate Edit Prompts'
     : activeMode === 'video' ? 'Generate Video Prompts'
     : 'Generate Prompts'
@@ -324,7 +410,7 @@ export default function Home() {
 
   return (
     <main className="h-screen flex flex-col bg-[#FAFAFA] overflow-hidden">
-      {/* ── Top bar ── */}
+      {/* Top bar */}
       <div className="border-b border-neutral-100 shrink-0">
         <div className="max-w-full mx-auto px-6 py-3 flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -349,12 +435,12 @@ export default function Home() {
         </div>
       </div>
 
-      {/* ── Three-column layout ── */}
+      {/* Three-column layout */}
       <div className={`flex-1 flex overflow-hidden transition-all duration-700 ease-[cubic-bezier(0.4,0,0.2,1)] ${
         showCenter ? 'max-w-full' : 'max-w-[720px] mx-auto'
       }`}>
 
-        {/* ─── LEFT COLUMN — Settings ─── */}
+        {/* LEFT COLUMN — Settings */}
         <div className={`shrink-0 flex flex-col overflow-y-auto transition-all duration-700 ease-[cubic-bezier(0.4,0,0.2,1)] ${
           showCenter
             ? 'w-[280px] px-5 py-5 border-r border-neutral-100'
@@ -370,16 +456,20 @@ export default function Home() {
 
             <div className="border-t border-neutral-100" />
 
-            <ModelSelector
-              activeModel={activeModel}
-              appMode={appMode}
-              generationSubMode={activeMode}
-              onChange={setActiveModel}
-            />
+            {appMode !== 'artdirection' && (
+              <>
+                <ModelSelector
+                  activeModel={activeModel}
+                  appMode={appMode}
+                  generationSubMode={activeMode}
+                  onChange={setActiveModel}
+                />
+                <div className="border-t border-neutral-100" />
+              </>
+            )}
 
             {appMode !== 'enhance' && (
               <>
-                <div className="border-t border-neutral-100" />
                 <div>
                   <label className="block text-xs uppercase tracking-widest text-neutral-400 mb-2">
                     {appMode === 'artdirection' ? 'Shot Cards' : 'Prompts'}
@@ -405,7 +495,7 @@ export default function Home() {
           </div>
         </div>
 
-        {/* ─── CENTER COLUMN — Results (split-reveal) ─── */}
+        {/* CENTER COLUMN — Results */}
         <div
           className={`overflow-hidden transition-all duration-700 ease-[cubic-bezier(0.4,0,0.2,1)] ${
             showCenter ? 'flex-1 min-w-0 opacity-100' : 'w-0 opacity-0'
@@ -417,7 +507,40 @@ export default function Home() {
                 <LoadingAnimation phase={loadingPhase as AnimLoadingPhase} />
               </div>
             )}
-            {result && hasPrompts && (
+
+            {/* Art Direction brief — displayed in center */}
+            {!isLoading && hasArtBrief && (
+              <div className="max-w-2xl mx-auto space-y-5">
+                <BriefPanel brief={artBrief!.brief} defaultOpen />
+                {artBrief!.cues && (
+                  <AnalysisPanel cues={artBrief!.cues} />
+                )}
+
+                {/* CTA: Generate from this brief */}
+                <div className="border border-neutral-200 rounded-sm px-5 py-4 space-y-3">
+                  <p className="text-sm text-neutral-600">
+                    Your creative brief is ready. Generate model-specific prompts from it:
+                  </p>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => handleGenerateFromBrief('generate')}
+                      className="flex-1 py-2.5 bg-neutral-900 text-white text-sm rounded-sm hover:bg-neutral-700 transition-colors"
+                    >
+                      Generate Image Prompts
+                    </button>
+                    <button
+                      onClick={() => handleGenerateFromBrief('video')}
+                      className="flex-1 py-2.5 bg-white text-neutral-700 text-sm rounded-sm border border-neutral-200 hover:border-neutral-400 transition-colors"
+                    >
+                      Generate Video Prompts
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Normal prompt results */}
+            {!isLoading && result && hasPrompts && (
               <PromptList
                 prompts={result.prompts}
                 visualStyleCues={result.visualStyleCues}
@@ -426,14 +549,14 @@ export default function Home() {
                 activeModel={activeModel}
                 activeMode={activeMode}
                 onPromptUpdate={handlePromptUpdate}
-                displayMode={appMode === 'artdirection' ? 'briefOnly' : 'full'}
+                displayMode="full"
                 hideBriefAndAnalysis
               />
             )}
           </div>
         </div>
 
-        {/* ─── RIGHT COLUMN — Creative Input ─── */}
+        {/* RIGHT COLUMN — Creative Input */}
         <div className={`shrink-0 flex flex-col overflow-y-auto transition-all duration-700 ease-[cubic-bezier(0.4,0,0.2,1)] ${
           showCenter
             ? 'w-[280px] px-5 py-5 border-l border-neutral-100'
@@ -479,25 +602,22 @@ export default function Home() {
               {isLoading ? loadingText : ''}
             </div>
 
-            {/* Brief + Analysis — appear after generation, on the right */}
-            {result?.creativeBrief && (
-              <BriefPanel
-                brief={result.creativeBrief}
-                defaultOpen={appMode === 'artdirection'}
-              />
+            {/* Brief + Analysis — shown in right sidebar for non-Art Direction modes */}
+            {appMode !== 'artdirection' && result?.creativeBrief && (
+              <BriefPanel brief={result.creativeBrief} />
             )}
-            {result?.visualStyleCues && (
+            {appMode !== 'artdirection' && result?.visualStyleCues && (
               <AnalysisPanel cues={result.visualStyleCues} />
             )}
           </div>
         </div>
       </div>
 
-      {/* ── Modals ── */}
+      {/* Modals */}
       <HelpModal open={helpOpen} onClose={() => setHelpOpen(false)} />
       <CreditPopup open={showCreditPopup} onContinue={handleCreditConfirm} onCancel={handleCreditCancel} />
 
-      {/* ── First-visit intro ── */}
+      {/* First-visit intro */}
       {showIntro && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={handleIntroDismiss}>
           <div role="dialog" aria-modal="true" aria-labelledby="intro-title" className="bg-white max-w-lg w-full mx-4 rounded-sm shadow-xl" onClick={(e) => e.stopPropagation()}>
@@ -532,7 +652,7 @@ export default function Home() {
                   <span className="text-neutral-300 font-mono text-xs mt-0.5 shrink-0">03</span>
                   <div>
                     <p className="font-medium text-neutral-800">Art Direction</p>
-                    <p className="text-neutral-500 text-xs">Develop creative briefs with visual narratives, shot cards, and color anchors.</p>
+                    <p className="text-neutral-500 text-xs">Develop a creative brief, then generate image or video prompts from it.</p>
                   </div>
                 </div>
               </div>
