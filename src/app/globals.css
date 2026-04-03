@@ -28,6 +28,11 @@ body {
   outline-offset: 2px;
 }
 
+input[type="checkbox"]:focus-visible,
+button[class*="w-5"]:focus-visible {
+  outline-offset: 0px;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: 0.01ms !important;

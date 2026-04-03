@@ -202,7 +202,7 @@ export default function ImageUploader({ images, imageLabels, maxImages, onChange
                 )}
                 {/* Label editor */}
                 {isEditing && (
-                  <div className="absolute top-full left-0 mt-1 z-10 bg-white border border-neutral-200 rounded-sm shadow-sm p-1.5 w-36">
+                  <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1 z-10 bg-white border border-neutral-200 rounded-sm shadow-sm p-1.5 w-36">
                     <input
                       type="text"
                       defaultValue={label}

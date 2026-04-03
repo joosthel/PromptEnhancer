@@ -139,71 +139,13 @@ export default function Home() {
     pendingAction.current = null
   }
 
-  /** Generate prompts from the Art Direction brief — switch to generate/video mode and use cached brief */
+  /** Switch from Art Direction to Generate/Video mode — let user choose model, then click Generate */
   function handleGenerateFromBrief(subMode: GenerationMode) {
     if (!artBrief) return
     setAppMode('generate')
     setActiveMode(subMode)
     setActiveModel(getDefaultModelForMode(subMode))
     setResult(null)
-
-    // Trigger generation with the cached brief after state update
-    setTimeout(() => {
-      pendingAction.current = () => handleGenerateWithBrief(subMode, artBrief.brief)
-      setShowCreditPopup(true)
-    }, 0)
-  }
-
-  async function handleGenerateWithBrief(mode: GenerationMode, brief: CreativeBrief) {
-    const hasImages = images.length > 0
-    const fingerprint = hasImages ? computeImageFingerprint(images) : ''
-    const hasCachedCues = hasImages && visionCache?.fingerprint === fingerprint
-    const targetModel = getDefaultModelForMode(mode)
-
-    setError(null)
-    setResult(null)
-    setLoadingPhase('generating')
-
-    try {
-      const serializedImages = images.map((img) => {
-        if (img.type === 'base64') {
-          return { type: 'base64' as const, data: img.data, mimeType: img.mimeType }
-        }
-        return { type: 'url' as const, url: img.url }
-      })
-
-      const response = await fetch('/api/generate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          images: hasCachedCues ? [] : serializedImages,
-          cachedVisionCues: hasCachedCues ? visionCache!.cues : undefined,
-          cachedBrief: brief,
-          userInputs,
-          promptCount,
-          targetModel,
-          mode,
-          imageLabels: imageLabels.length > 0 ? imageLabels : undefined,
-        }),
-      })
-
-      const data = await response.json()
-
-      if (!response.ok) {
-        throw new Error(data.error ?? `Request failed with status ${response.status}`)
-      }
-
-      setResult(data as GenerateResult)
-
-      if (data.visualStyleCues && !hasCachedCues && hasImages) {
-        setVisionCache({ fingerprint, cues: data.visualStyleCues })
-      }
-
-      setLoadingPhase('done')
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'An unexpected error occurred')
-      setLoadingPhase('idle')
-    }
   }
 
   async function handleEnhance() {
@@ -290,10 +232,16 @@ export default function Home() {
     const fingerprint = hasImages ? computeImageFingerprint(images) : ''
     const hasCachedCues = hasImages && visionCache?.fingerprint === fingerprint
     const isBriefOnly = appMode === 'artdirection'
+    const hasCachedBrief = !isBriefOnly && !!artBrief?.brief
 
     setError(null)
     setResult(null)
-    setLoadingPhase(hasCachedCues ? 'briefing' : hasImages ? 'analyzing' : 'briefing')
+    setLoadingPhase(
+      hasCachedBrief ? 'generating'
+        : hasCachedCues ? 'briefing'
+        : hasImages ? 'analyzing'
+        : 'briefing'
+    )
 
     let briefTimer: ReturnType<typeof setTimeout> | null = null
     let promptTimer: ReturnType<typeof setTimeout> | null = null
@@ -322,6 +270,7 @@ export default function Home() {
         body: JSON.stringify({
           images: hasCachedCues ? [] : serializedImages,
           cachedVisionCues: hasCachedCues ? visionCache!.cues : undefined,
+          cachedBrief: hasCachedBrief ? artBrief!.brief : undefined,
           userInputs,
           promptCount,
           targetModel: activeModel,
@@ -378,6 +327,7 @@ export default function Home() {
   const isLoading = loadingPhase === 'analyzing' || loadingPhase === 'briefing' || loadingPhase === 'generating'
   const hasPrompts = result && result.prompts && result.prompts.length > 0
   const hasArtBrief = appMode === 'artdirection' && !!artBrief
+  const usingArtBrief = appMode === 'generate' && !!artBrief
   // Center column opens for loading, prompt results, or Art Direction brief
   const showCenter = isLoading || !!hasPrompts || hasArtBrief
 
@@ -584,6 +534,18 @@ export default function Home() {
                 className="flex-1 min-h-[140px] w-full border border-neutral-200 rounded-sm px-3 py-2 text-sm bg-white focus:outline-none focus:border-neutral-400 resize-none placeholder:text-neutral-400"
               />
             </div>
+
+            {usingArtBrief && (
+              <div className="border border-neutral-200 bg-neutral-50 rounded-sm px-3 py-2 shrink-0 flex items-center justify-between gap-2">
+                <span className="text-xs text-neutral-500">Using brief from Art Direction</span>
+                <button
+                  onClick={() => setArtBrief(null)}
+                  className="text-xs text-neutral-400 hover:text-neutral-600 transition-colors"
+                >
+                  Clear
+                </button>
+              </div>
+            )}
 
             {error && (
               <div role="alert" className="border border-red-100 bg-red-50 rounded-sm px-3 py-2 shrink-0">

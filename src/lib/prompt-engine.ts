@@ -31,12 +31,27 @@ NAME-DROPPING: Do NOT name cinematographers, directors, or film titles in the pr
 these as style references. Instead, DESCRIBE the visual quality you want.
 SHARPNESS AMPLIFIERS: "sharp focus", "crisp details", "high quality", "ultra detailed" — amplify AI look`
 
-const NATURALISM_VOCABULARY = `NATURALISM VOCABULARY — CRITICAL FOR KLEIN (its 1B flow model over-sharpens and smooths by default):
-Every prompt MUST include at least 2 organic texture cues to counteract Klein's synthetic tendencies:
-- Skin: "natural skin texture with visible pores", "uneven skin tone", "fine lines around eyes", "subtle sheen on forehead"
-- Surface: "scuffed", "patina'd", "rain-spotted", "sun-faded", "dust-settled", "fingerprint-smudged", "cracked", "peeling"
-- Film/Analog: "film grain", "subtle halation on highlights", "analog color shift", "gentle vignetting", "slight lens imperfection"
-- Environment: "asymmetric composition", "slightly cluttered", "lived-in", "worn edges", "sun-bleached", "water-stained"
+const NATURALISM_VOCABULARY = `NATURALISM VOCABULARY — counteract Klein's synthetic smoothness with REAL-WORLD texture cues.
+Include at least 1-2 texture cues appropriate to the scene's aesthetic:
+
+FOR WORN/ORGANIC SCENES:
+- Surface: "scuffed", "patina'd", "rain-spotted", "dust-settled", "cracked", "peeling", "sun-faded"
+- Film: "film grain", "subtle halation on highlights", "analog color shift", "gentle vignetting"
+
+FOR CLEAN/PRISTINE SCENES:
+- Surface: "crisp fabric weave", "smooth polished concrete", "brushed metal", "fresh paint", "clean glass"
+- Skin: "natural skin texture", "subtle peach fuzz", "healthy sheen", "smooth complexion"
+- Film: "clean digital clarity", "precise color rendering", "minimal grain"
+
+FOR ANY SCENE:
+- "slight lens imperfection", "natural depth of field falloff", "micro-texture on surfaces"
+
+SKIN (match to subject age and context):
+- Youth: "smooth skin", "natural peach fuzz", "healthy flush", "clear complexion"
+- Adult: "natural skin texture with visible pores", "subtle expression lines"
+- Aged: "fine lines around eyes", "uneven skin tone", "weathered texture"
+
+MATCH the texture vocabulary to the user's intent. A bright children's portrait needs "healthy glow" not "uneven skin tone". A gritty noir needs "visible pores and fine lines" not "smooth skin".
 NEVER USE: "sharp focus", "crisp details", "high quality", "8k", "ultra detailed" — these AMPLIFY the AI look on Klein`
 
 const CINEMATIC_PROMPT_STYLE = `HOW TO WRITE CINEMATIC PROMPTS FOR KLEIN:
@@ -52,14 +67,15 @@ CRITICAL: NEVER include any of these in the output prompt:
 INSTEAD, describe light, color, and atmosphere through their VISIBLE EFFECT on the scene:
 
 LIGHT — describe how it FALLS and what it DOES:
-- Direction and behavior: "cold light cutting across from the left", "warm glow pooling on the floor", "single shaft of light from high above"
-- Quality through effect: "overcast and flattened, giving a bluish desaturated tone", "harsh side-light carving deep shadows across the face"
-- Color temperature as feeling: "cold blue-grey wash", "warm amber spill", "tungsten warmth against cool daylight from the window"
-- Shadow as subject: "deep shadow swallowing the background", "half the face lost in darkness", "long shadows stretching across wet concrete"
+- Direction: "cold light cutting across from the left", "warm glow pooling on the floor", "even daylight filling the space", "single shaft of light from high above"
+- Quality: "overcast and flattened", "harsh side-light carving shadows", "bright diffused light opening all detail", "high-key even illumination", "soft wrap-around light"
+- Temperature: "cold blue-grey wash", "warm amber spill", "clean neutral daylight", "tungsten warmth against cool daylight from the window"
+- Shadow range: from "deep shadow swallowing the background" to "open shadows with full detail visible" — match to the scene's mood
 
-COLOR — describe the palette through surfaces and atmosphere:
-- "desaturated, muted tones with minimal contrast", "warm amber skin tones against cold steel-blue walls"
-- "bluish flattened tone", "deep blacks with lifted shadow detail", "color drained to near-monochrome"
+COLOR — describe the palette through surfaces and atmosphere. Match to the creative direction:
+- Dark/moody: "desaturated, muted tones with minimal contrast", "deep blacks with lifted shadow detail", "color drained to near-monochrome"
+- Bright/clean: "saturated primaries with open highlights", "warm skin tones against vivid environment color", "bright whites and clean color separation"
+- Neutral: "naturalistic color with accurate white balance", "subtle grade preserving original palette"
 - Hex codes bound to surfaces: "the wall is #2C3E50", "skin catching warm #D4956A from the window"
 
 COMPOSITION — describe what the camera sees and why it matters:
@@ -68,10 +84,11 @@ COMPOSITION — describe what the camera sees and why it matters:
 - Space: "negative space pressing the figure to the edge of frame", "the architecture dominating the upper two-thirds"
 - Motion: "motion blur on the hands suggesting urgency", "static frame against subject movement"
 
-ATMOSPHERE — sensory, emotional, physical:
-- "oppressive weight", "quiet tension", "humid stillness", "industrial cold"
-- Weather and air: "hazy pressure-wave distorting the air", "dust motes catching light", "rain-wet reflections on dark pavement"
-- Surface behavior: "slightly wet or reflective ground", "condensation on glass", "heat shimmer off metal"
+ATMOSPHERE — match to the scene's emotional register:
+- Heavy: "oppressive weight", "quiet tension", "humid stillness", "industrial cold"
+- Light: "open air", "gentle warmth", "playful energy", "spacious calm", "crisp clarity"
+- Sensory: "dust motes catching light", "condensation on glass", "heat shimmer off metal", "dew on grass", "rain-wet reflections"
+- Surface behavior: "slightly wet or reflective ground", "dry sun-warmed concrete", "polished surfaces catching color"
 
 SPATIAL ANCHOR — every frame needs one element that anchors the composition:
 - Name one element that DOMINATES a specific region of the frame: "the helicopter dominates the left half"
@@ -79,19 +96,18 @@ SPATIAL ANCHOR — every frame needs one element that anchors the composition:
 - The anchor can be an object, architecture, a shadow, a light source, or empty space
 - The anchor creates visual gravity — everything else orbits it
 
-SPECIFICITY OF ABSENCE — describe what is partially hidden, subdued, or soft:
-- "readable but subdued due to the diffuse lighting" (detail exists but is suppressed)
-- "partially silhouetted against the pale sky" (figure between visible and invisible)
-- "soft, low-contrast boundary at the far right" (background fading)
-- "half the face lost in darkness" (shadow as active compositional element)
-Every prompt should include at least one "almost-not-there" element. This creates visual richness.
+SPECIFICITY OF ABSENCE — when the mood calls for it, describe what is partially hidden or subdued:
+- "readable but subdued due to the diffuse lighting"
+- "partially silhouetted against the pale sky"
+- "soft, low-contrast boundary at the far right"
+Use when the creative direction calls for mystery, tension, or shadow. Do NOT force absence into bright, open compositions.
 
-INTERNAL REFERENCE (use to inform your writing — NEVER output these names in prompts):
-- Deakins: precise single-source, deep motivated shadows, naturalistic color, pools of light in darkness
-- Fraser: desaturated haze, silhouettes against vast scale, amber-teal tension
-- Lubezki: magic hour naturalism, available light, atmosphere as character
-- Willis: faces half-lost in shadow, warm overhead pools, deep contrast
-- Young: underexposed richness, shadow detail that breathes, warm amber undertones`
+INTERNAL REFERENCE (inform your writing style — NEVER output names in prompts):
+Match the reference palette to the user's aesthetic intent:
+- DARK: Deakins (single-source, deep shadows), Fraser (desaturated haze), Willis (faces half-lost in shadow)
+- BRIGHT: Richardson (saturated color, vivid daylight), Khondji (luminous skin, precise color), Miyagawa (clean high-key)
+- NATURAL: Lubezki (magic hour, available light), Young (warm amber undertones)
+- CONTROLLED: Storaro (bold color blocking), Savides (muted but precise)`
 
 const QWEN_ENCODER_RULES = `FLUX 2 KLEIN 9B — TEXT ENCODER ARCHITECTURE (Qwen3-8B-FP8, decoder-only LLM):
 Features extracted from Qwen3 layers [9, 18, 27] → 12,288-dim context vector. 4-step distilled inference, CFG locked at 1.0.
@@ -195,7 +211,7 @@ PHASE C: PRODUCTION BRIEF (global — shared across all frames)
 
 1. COLOR GRADE — One sentence. Copied VERBATIM into every prompt.
 
-2. COLOR ANCHORS — 3 hex colors with RANGE: one deep dark, one rich midtone, one bright/accent. NOT three similar tones. These define the palette's contrast and intention.
+2. COLOR ANCHORS — 3 to 5 hex colors that define the palette's intention. Include the full range present in the reference images. A monochrome scene may need only 3; a colorful scene should use 4-5. Do NOT force every palette to include a deep dark — if the scene is bright, use bright anchors.
 
 3. LIGHT SOURCE — Describe the GLOBAL light source and its quality through visible effect. NOT equipment names.
 Describe: direction, quality (hard/soft), color temperature as feeling, shadow behavior, contrast level.
@@ -240,11 +256,11 @@ DIVERSITY CONSTRAINTS — these are MANDATORY:
 CINEMATIC PRINCIPLES
 ═══════════════════════════════════════════════════════════════
 
-SHADOW IS A CREATIVE TOOL — dense shadows with lost detail are a CHOICE. What you hide is as important as what you show.
 DEPTH IS MANDATORY — every frame must have visual depth through layered planes, not flat subjects on flat backgrounds.
-ASYMMETRY IS CINEMATIC — perfect symmetry and even lighting are hallmarks of AI. Real cinema is asymmetric.
+ASYMMETRY OFTEN READS AS CINEMATIC — but deliberate symmetry can be powerful when intentional.
+TEXTURE IS REALISM — whether that's worn grain or pristine smoothness, surfaces should feel tangible.
+SHADOW IS A TOOL — use it when the mood calls for it, not as a default.
 NEGATIVE SPACE IS POWERFUL — empty frame with one element in the right place beats a full frame with everything.
-IMPERFECTION IS REALISM — grain, halation, uneven surfaces, environmental wear. Perfect = artificial.
 
 RULES:
 - Every field: concrete enough to execute without interpretation
@@ -257,7 +273,7 @@ GROUNDING RULE — CREATIVE VISION MUST BE DERIVED, NOT INVENTED:
 Your creative vision is an ARTICULATION of what the reference images and user direction already communicate — not a departure from them. If the images show cold industrial interiors, your vision must work WITH that reality, not pivot to something unrelated. The metaphor and unexpected element must DEEPEN what's already there, not contradict or replace it.
 
 COLOR ANCHOR RULE — DERIVED FROM VISUAL ANALYSIS:
-If a visual analysis palette is provided, your 3 colorAnchors MUST be selected from or closely matched to colors in the provided hexPalette. Do NOT invent new colors that aren't present in the reference images. The brief's palette must be recognizably the same palette as the images.
+If a visual analysis palette is provided, your 3-5 colorAnchors MUST be selected from or closely matched to colors in the provided hexPalette. Do NOT invent new colors that aren't present in the reference images. The brief's palette must be recognizably the same palette as the images.
 
 IMAGE LABEL INTEGRATION:
 When reference image labels are provided, they define the ROLE each image plays:
@@ -290,7 +306,7 @@ Return ONLY valid JSON:
     }
   ],
   "colorGrade": "single sentence — the exact color grade",
-  "colorAnchors": ["#deep_dark", "#rich_midtone", "#bright_accent"],
+  "colorAnchors": ["#color1", "#color2", "#color3", "...up to 5"],
   "lightSource": "global light source described through visible effect",
   "materials": "dominant materials and textures",
   "mood": "emotional baseline — the register the set never drops below",
@@ -303,7 +319,7 @@ Return ONLY valid JSON:
 
 FINAL CHECK before outputting JSON:
 1. Does creativeVision articulate what the reference images ALREADY communicate (not invent something new)?
-2. Are all 3 colorAnchors present in or closely matched to the extracted palette?
+2. Are colorAnchors (3-5) present in or closely matched to the extracted palette?
 3. Does every user-specified constraint appear verbatim in the relevant field?
 4. Is every field concrete enough to execute without interpretation?
 Return ONLY the JSON object. No markdown, no explanation.`
@@ -450,10 +466,7 @@ RULES:
 - Hex anchors bound to NAMED surfaces ("the wall is #2C3E50" not just "#2C3E50")
 - Each frame compositionally distinct from every other
 
-${NATURALISM_VOCABULARY}
-
-${QWEN_ENCODER_RULES}
-
+${targetModel === 'flux-2-klein-9b' ? NATURALISM_VOCABULARY + '\n\n' + QWEN_ENCODER_RULES : ''}
 ${FORBIDDEN_LANGUAGE}
 
 VALIDATION:
@@ -932,11 +945,7 @@ ENHANCEMENT PROCESS — rewrite the prompt using this 5-element structure:
 Then TRIM: remove filler, synonym chains, meta-language ("a photograph of"), abstract adjectives alone.
 Target: ${profile.optimalLengthMin}-${profile.optimalLengthMax} words.
 
-${CINEMATIC_PROMPT_STYLE}
-
-${NATURALISM_VOCABULARY}
-
-${targetModel === 'flux-2-klein-9b' ? QWEN_ENCODER_RULES + '\n' : ''}
+${targetModel === 'flux-2-klein-9b' ? CINEMATIC_PROMPT_STYLE + '\n\n' + NATURALISM_VOCABULARY + '\n\n' + QWEN_ENCODER_RULES + '\n' : ''}
 ${FORBIDDEN_LANGUAGE}
 
 WHAT TO PRESERVE:
