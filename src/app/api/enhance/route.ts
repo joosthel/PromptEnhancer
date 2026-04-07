@@ -7,11 +7,11 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { callOpenRouter, callOpenRouterWithFallback, parseJsonResponse, ContentPart, TEXT_MODEL, TEXT_MODEL_FALLBACK, VISION_MODEL, VISION_MODEL_FALLBACK } from '@/lib/openrouter'
-import { GEMINI_VISION_PROMPT, UserInputs, VisualStyleCues } from '@/lib/system-prompt'
+import { callOpenRouterWithFallback, parseJsonResponse, ContentPart, TEXT_MODEL, TEXT_MODEL_FALLBACK, VISION_MODEL, VISION_MODEL_FALLBACK } from '@/lib/openrouter'
+import { VisualStyleCuesSchema, SinglePromptResponseSchema } from '@/lib/schemas'
+import { GEMINI_VISION_PROMPT, VisualStyleCues, ImageLabel } from '@/lib/system-prompt'
 import { buildEnhanceSystemPrompt, buildEnhanceUserMessage } from '@/lib/prompt-engine'
 import { TargetModel, GenerationMode, VALID_TARGET_MODELS, VALID_GENERATION_MODES } from '@/lib/model-profiles'
-import { ImageLabel } from '@/lib/system-prompt'
 import { rateLimit } from '@/lib/rate-limit'
 
 export const maxDuration = 60
@@ -113,9 +113,9 @@ export async function POST(request: NextRequest) {
       }, VISION_MODEL_FALLBACK)
 
       try {
-        visualStyleCues = parseJsonResponse<VisualStyleCues>(visionResponse)
-      } catch {
-        console.error('Vision analysis parse failed, continuing without style cues')
+        visualStyleCues = parseJsonResponse(visionResponse, VisualStyleCuesSchema)
+      } catch (e) {
+        console.error('Vision analysis parse failed, continuing without style cues:', e instanceof Error ? e.message : e)
       }
     } else if (cachedVisionCues) {
       visualStyleCues = cachedVisionCues
@@ -138,14 +138,7 @@ export async function POST(request: NextRequest) {
       ],
     }, TEXT_MODEL_FALLBACK)
 
-    const parsed = parseJsonResponse<{ prompt: string }>(enhanceResponse)
-
-    if (!parsed.prompt?.trim()) {
-      return NextResponse.json(
-        { error: 'Model returned an empty prompt. Please try again.' },
-        { status: 500 }
-      )
-    }
+    const parsed = parseJsonResponse(enhanceResponse, SinglePromptResponseSchema)
 
     const response: EnhanceResponse = {
       prompt: parsed.prompt,

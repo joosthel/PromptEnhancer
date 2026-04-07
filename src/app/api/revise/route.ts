@@ -9,6 +9,7 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { callOpenRouterWithFallback, parseJsonResponse, TEXT_MODEL, TEXT_MODEL_FALLBACK } from '@/lib/openrouter'
+import { SinglePromptResponseSchema } from '@/lib/schemas'
 import { UserInputs, VisualStyleCues } from '@/lib/system-prompt'
 import { buildRevisionSystemPrompt, buildRevisionUserMessage } from '@/lib/prompt-engine'
 import { TargetModel, GenerationMode, VALID_TARGET_MODELS, VALID_GENERATION_MODES } from '@/lib/model-profiles'
@@ -99,14 +100,7 @@ export async function POST(request: NextRequest) {
       ],
     }, TEXT_MODEL_FALLBACK)
 
-    const parsed = parseJsonResponse<{ prompt: string }>(reviseResponse)
-
-    if (!parsed.prompt?.trim()) {
-      return NextResponse.json(
-        { error: 'Model returned an empty prompt. Please try again.' },
-        { status: 500 }
-      )
-    }
+    const parsed = parseJsonResponse(reviseResponse, SinglePromptResponseSchema)
 
     const response: ReviseResponse = { prompt: parsed.prompt }
     return NextResponse.json(response)

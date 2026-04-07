@@ -5,13 +5,15 @@
  * all API routes (generate, revise).
  */
 
+import { z } from 'zod'
+
 const OPENROUTER_API_URL = 'https://openrouter.ai/api/v1/chat/completions'
 
 /** Centralized model constants — change here to swap models globally. */
-export const TEXT_MODEL = 'qwen/qwen3.6-plus:free'
-export const TEXT_MODEL_FALLBACK = 'deepseek/deepseek-v3.2'
-export const VISION_MODEL = 'google/gemma-4-31b-it'
-export const VISION_MODEL_FALLBACK = 'google/gemini-2.5-flash'
+export const TEXT_MODEL = 'deepseek/deepseek-v3.2'
+export const TEXT_MODEL_FALLBACK = 'qwen/qwen3.6-plus:free'
+export const VISION_MODEL = 'google/gemini-2.5-flash'
+export const VISION_MODEL_FALLBACK = 'google/gemma-4-31b-it'
 
 /** A single content part in a multimodal message — either plain text or an image URL. */
 export type ContentPart =
@@ -127,25 +129,47 @@ export async function callOpenRouterWithFallback(
 }
 
 /**
- * Parses a JSON string returned by a model, with three fallback strategies:
+ * Extracts a JSON object from model output using three fallback strategies:
  * 1. Direct `JSON.parse` — handles well-formed responses
  * 2. Extracts from a ` ```json ... ``` ` code block — handles markdown-wrapped output
  * 3. Extracts the first `{ ... }` object found — handles responses with surrounding text
- *
- * @throws {Error} If none of the three strategies succeeds.
  */
-export function parseJsonResponse<T>(text: string): T {
+function extractJson(text: string): unknown {
   try {
-    return JSON.parse(text) as T
+    return JSON.parse(text)
   } catch {
     const codeBlock = text.match(/```(?:json)?\s*([\s\S]*?)```/)
     if (codeBlock) {
-      return JSON.parse(codeBlock[1].trim()) as T
+      return JSON.parse(codeBlock[1].trim())
     }
     const jsonObject = text.match(/\{[\s\S]*\}/)
     if (jsonObject) {
-      return JSON.parse(jsonObject[0]) as T
+      return JSON.parse(jsonObject[0])
     }
     throw new Error('Could not parse JSON from model response')
   }
+}
+
+/**
+ * Parses a JSON string and validates it against a Zod schema.
+ * Uses three fallback extraction strategies, then validates the shape.
+ *
+ * @throws {Error} If extraction or validation fails.
+ */
+export function parseJsonResponse<T>(text: string, schema: z.ZodType<T>): T {
+  const raw = extractJson(text)
+  const result = schema.safeParse(raw)
+  if (!result.success) {
+    const issues = result.error.issues.map(i => `${i.path.join('.')}: ${i.message}`).join('; ')
+    throw new Error(`Invalid model response shape: ${issues}`)
+  }
+  return result.data
+}
+
+/**
+ * Legacy overload: parses JSON without schema validation (unsafe cast).
+ * @deprecated Use the schema-validated overload instead.
+ */
+export function parseJsonResponseUnsafe<T>(text: string): T {
+  return extractJson(text) as T
 }

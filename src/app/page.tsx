@@ -244,19 +244,6 @@ export default function Home() {
         : 'briefing'
     )
 
-    let briefTimer: ReturnType<typeof setTimeout> | null = null
-    let promptTimer: ReturnType<typeof setTimeout> | null = null
-    if (hasImages && !hasCachedCues) {
-      briefTimer = setTimeout(() => setLoadingPhase('briefing'), 7000)
-      if (!isBriefOnly) {
-        promptTimer = setTimeout(() => setLoadingPhase('generating'), 14000)
-      }
-    } else {
-      if (!isBriefOnly) {
-        promptTimer = setTimeout(() => setLoadingPhase('generating'), 6000)
-      }
-    }
-
     try {
       const serializedImages = images.map((img) => {
         if (img.type === 'base64') {
@@ -265,7 +252,7 @@ export default function Home() {
         return { type: 'url' as const, url: img.url }
       })
 
-      const response = await fetch('/api/generate', {
+      const response = await fetch('/api/generate-stream', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -281,34 +268,120 @@ export default function Home() {
         }),
       })
 
-      const data = await response.json()
-
-      if (!response.ok) {
-        throw new Error(data.error ?? `Request failed with status ${response.status}`)
+      if (!response.ok || !response.body) {
+        const text = await response.text()
+        throw new Error(text || `Request failed with status ${response.status}`)
       }
 
-      if (isBriefOnly) {
-        // Art Direction: store brief separately, don't set as prompt result
-        setArtBrief({
-          brief: data.creativeBrief,
-          cues: data.visualStyleCues,
-        })
-        setResult(null)
-      } else {
-        setResult(data as GenerateResult)
+      // Read SSE stream
+      const reader = response.body.getReader()
+      const decoder = new TextDecoder()
+      let buffer = ''
+      let streamedVisionCues: VisualStyleCues | undefined
+      let streamedBrief: CreativeBrief | undefined
+
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+
+        buffer += decoder.decode(value, { stream: true })
+
+        // Parse complete SSE events from buffer
+        const events = buffer.split('\n\n')
+        buffer = events.pop() ?? '' // keep incomplete event in buffer
+
+        for (const eventStr of events) {
+          if (!eventStr.trim()) continue
+
+          const lines = eventStr.split('\n')
+          let eventName = ''
+          let eventData = ''
+
+          for (const line of lines) {
+            if (line.startsWith('event: ')) eventName = line.slice(7)
+            else if (line.startsWith('data: ')) eventData = line.slice(6)
+          }
+
+          if (!eventName || !eventData) continue
+
+          try {
+            const data = JSON.parse(eventData)
+
+            switch (eventName) {
+              case 'phase':
+                if (data.phase === 'analyzing' || data.phase === 'briefing' || data.phase === 'generating') {
+                  setLoadingPhase(data.phase)
+                }
+                break
+
+              case 'vision':
+                streamedVisionCues = data
+                if (!hasCachedCues && hasImages) {
+                  setVisionCache({ fingerprint, cues: data })
+                }
+                break
+
+              case 'brief':
+                streamedBrief = data
+                // Show brief immediately in center column for art direction
+                if (isBriefOnly) {
+                  setArtBrief({ brief: data, cues: streamedVisionCues })
+                } else {
+                  // For generate mode, show brief in the result as it arrives
+                  setResult(prev => ({
+                    prompts: prev?.prompts ?? [],
+                    visualStyleCues: streamedVisionCues,
+                    creativeBrief: data,
+                  }))
+                }
+                break
+
+              case 'prompts':
+                if (isBriefOnly) {
+                  setArtBrief({
+                    brief: data.creativeBrief ?? streamedBrief,
+                    cues: data.visualStyleCues ?? streamedVisionCues,
+                  })
+                  setResult(null)
+                } else {
+                  setResult({
+                    prompts: data.prompts,
+                    visualStyleCues: data.visualStyleCues ?? streamedVisionCues,
+                    creativeBrief: data.creativeBrief ?? streamedBrief,
+                  })
+                }
+                if (data.visualStyleCues && !hasCachedCues && hasImages) {
+                  setVisionCache({ fingerprint, cues: data.visualStyleCues })
+                }
+                break
+
+              case 'done':
+                setLoadingPhase('done')
+                // For art direction briefOnly, handle done event with data
+                if (isBriefOnly && data.creativeBrief) {
+                  setArtBrief({
+                    brief: data.creativeBrief,
+                    cues: data.visualStyleCues ?? streamedVisionCues,
+                  })
+                }
+                break
+
+              case 'error':
+                throw new Error(data.error ?? 'An unexpected error occurred')
+            }
+          } catch (parseErr) {
+            if (parseErr instanceof Error && parseErr.message !== 'An unexpected error occurred') {
+              throw parseErr
+            }
+          }
+        }
       }
 
-      if (data.visualStyleCues && !hasCachedCues && hasImages) {
-        setVisionCache({ fingerprint, cues: data.visualStyleCues })
-      }
-
-      setLoadingPhase('done')
+      // Ensure loading is done even if 'done' event was missed
+      setLoadingPhase(prev => prev === 'idle' ? 'idle' : 'done')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An unexpected error occurred')
       setLoadingPhase('idle')
-    } finally {
-      if (briefTimer) clearTimeout(briefTimer)
-      if (promptTimer) clearTimeout(promptTimer)
     }
   }
 
@@ -327,10 +400,11 @@ export default function Home() {
 
   const isLoading = loadingPhase === 'analyzing' || loadingPhase === 'briefing' || loadingPhase === 'generating'
   const hasPrompts = result && result.prompts && result.prompts.length > 0
+  const hasBriefToShow = result?.creativeBrief && !hasPrompts // Brief arrived but prompts haven't yet
   const hasArtBrief = appMode === 'artdirection' && !!artBrief
   const usingArtBrief = appMode === 'generate' && !!artBrief
-  // Center column opens for loading, prompt results, or Art Direction brief
-  const showCenter = isLoading || !!hasPrompts || hasArtBrief
+  // Center column opens for loading, prompt results, streamed brief, or Art Direction brief
+  const showCenter = isLoading || !!hasPrompts || !!hasBriefToShow || hasArtBrief
 
   const loadingText =
     loadingPhase === 'analyzing'
@@ -361,8 +435,27 @@ export default function Home() {
 
   return (
     <main className="h-screen flex flex-col bg-[#FAFAFA] overflow-hidden">
+      {/* Mobile message — shown on small screens */}
+      <div className="flex md:hidden items-center justify-center h-full px-6">
+        <div className="text-center max-w-sm space-y-4">
+          <h1 className="text-lg font-medium text-neutral-900">PromptEnhancer</h1>
+          <p className="text-sm text-neutral-500 leading-relaxed">
+            This tool is designed for desktop use. Please open it on a device with a screen width of at least 768px for the full experience.
+          </p>
+          <a
+            href="https://joosthelfers.com/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-block text-xs text-neutral-400 hover:text-neutral-600 transition-colors"
+          >
+            by @joosthel
+          </a>
+        </div>
+      </div>
+
+      {/* Desktop layout — hidden on mobile */}
       {/* Top bar */}
-      <div className="border-b border-neutral-100 shrink-0">
+      <div className="border-b border-neutral-100 shrink-0 hidden md:block">
         <div className="max-w-full mx-auto px-6 py-3 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <h1 className="text-lg font-medium tracking-tight text-neutral-900">PromptEnhancer</h1>
@@ -387,7 +480,7 @@ export default function Home() {
       </div>
 
       {/* Three-column layout */}
-      <div className={`flex-1 flex overflow-hidden transition-all duration-700 ease-[cubic-bezier(0.4,0,0.2,1)] ${
+      <div className={`flex-1 hidden md:flex overflow-hidden transition-all duration-700 ease-[cubic-bezier(0.4,0,0.2,1)] ${
         showCenter ? 'max-w-full' : 'max-w-[720px] mx-auto'
       }`}>
 
@@ -453,9 +546,23 @@ export default function Home() {
           }`}
         >
           <div className="h-full overflow-y-auto px-6 py-5">
-            {isLoading && (
+            {/* Show loading animation only when no streamed content is available yet */}
+            {isLoading && !hasBriefToShow && !hasPrompts && !hasArtBrief && (
               <div className="flex items-center justify-center h-full">
                 <LoadingAnimation phase={loadingPhase as AnimLoadingPhase} />
+              </div>
+            )}
+
+            {/* Streamed brief preview — shown while prompts are still generating */}
+            {hasBriefToShow && isLoading && (
+              <div className="max-w-2xl mx-auto space-y-5">
+                <BriefPanel brief={result!.creativeBrief!} defaultOpen />
+                {result!.visualStyleCues && (
+                  <AnalysisPanel cues={result!.visualStyleCues} />
+                )}
+                <div className="flex items-center justify-center py-4">
+                  <LoadingAnimation phase={loadingPhase as AnimLoadingPhase} />
+                </div>
               </div>
             )}
 
@@ -490,8 +597,8 @@ export default function Home() {
               </div>
             )}
 
-            {/* Normal prompt results */}
-            {!isLoading && result && hasPrompts && (
+            {/* Normal prompt results — show as soon as prompts arrive */}
+            {result && hasPrompts && (
               <PromptList
                 prompts={result.prompts}
                 visualStyleCues={result.visualStyleCues}
@@ -576,7 +683,9 @@ export default function Home() {
         </div>
       </div>
 
-      <Footer />
+      <div className="hidden md:block">
+        <Footer />
+      </div>
 
       {/* Modals */}
       <HelpModal open={helpOpen} onClose={() => setHelpOpen(false)} />

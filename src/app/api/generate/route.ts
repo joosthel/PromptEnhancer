@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { callOpenRouter, callOpenRouterWithFallback, parseJsonResponse, ContentPart, TEXT_MODEL, TEXT_MODEL_FALLBACK, VISION_MODEL, VISION_MODEL_FALLBACK } from '@/lib/openrouter'
+import { callOpenRouterWithFallback, parseJsonResponse, ContentPart, TEXT_MODEL, TEXT_MODEL_FALLBACK, VISION_MODEL, VISION_MODEL_FALLBACK } from '@/lib/openrouter'
+import { VisualStyleCuesSchema, CreativeBriefSchema, PromptsResponseSchema } from '@/lib/schemas'
 import { GEMINI_VISION_PROMPT, UserInputs, VisualStyleCues, ImageLabel, CreativeBrief } from '@/lib/system-prompt'
 import { buildSystemPrompt, buildUserMessage, BRIEF_SYSTEM_PROMPT, buildBriefUserMessage } from '@/lib/prompt-engine'
 import { TargetModel, GenerationMode, VALID_TARGET_MODELS, VALID_GENERATION_MODES } from '@/lib/model-profiles'
@@ -120,9 +121,9 @@ export async function POST(request: NextRequest) {
       }, VISION_MODEL_FALLBACK)
 
       try {
-        visualStyleCues = parseJsonResponse<VisualStyleCues>(visionResponse)
-      } catch {
-        console.error('Vision analysis parse failed, continuing without style cues')
+        visualStyleCues = parseJsonResponse(visionResponse, VisualStyleCuesSchema)
+      } catch (e) {
+        console.error('Vision analysis parse failed, continuing without style cues:', e instanceof Error ? e.message : e)
       }
     } else if (cachedVisionCues) {
       visualStyleCues = cachedVisionCues
@@ -152,9 +153,9 @@ export async function POST(request: NextRequest) {
       }, TEXT_MODEL_FALLBACK)
 
       try {
-        creativeBrief = parseJsonResponse<CreativeBrief>(briefResponse)
-      } catch {
-        console.error('Brief generation parse failed, continuing without brief')
+        creativeBrief = parseJsonResponse(briefResponse, CreativeBriefSchema)
+      } catch (e) {
+        console.error('Brief generation parse failed, continuing without brief:', e instanceof Error ? e.message : e)
       }
     }
 
@@ -185,16 +186,7 @@ export async function POST(request: NextRequest) {
       ],
     }, TEXT_MODEL_FALLBACK)
 
-    const parsed = parseJsonResponse<{ prompts: Array<{ label: string; prompt: string; negativePrompt?: string }> }>(
-      promptResponse
-    )
-
-    if (!Array.isArray(parsed.prompts) || parsed.prompts.length === 0) {
-      return NextResponse.json(
-        { error: 'Model returned no prompts. Please try again.' },
-        { status: 500 }
-      )
-    }
+    const parsed = parseJsonResponse(promptResponse, PromptsResponseSchema)
 
     const response: GenerateResponse = {
       prompts: parsed.prompts,
