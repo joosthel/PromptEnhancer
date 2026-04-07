@@ -35,6 +35,10 @@ interface GenerateStreamRequest {
   cachedVisionCues?: VisualStyleCues
   cachedBrief?: CreativeBrief
   briefOnly?: boolean
+  /** Indices of prompts to keep unchanged during selective regeneration */
+  lockedIndices?: number[]
+  /** Existing prompts to merge locked ones back into results */
+  existingPrompts?: Array<{ label: string; prompt: string; negativePrompt?: string }>
 }
 
 function sseEvent(event: string, data: unknown): string {
@@ -205,8 +209,13 @@ export async function POST(request: NextRequest) {
         // Step 3: Prompt generation
         send('phase', { phase: 'generating' })
 
+        const lockedSet = new Set(body.lockedIndices ?? [])
+        const existingPrompts = body.existingPrompts ?? []
+        const hasLocked = lockedSet.size > 0 && existingPrompts.length > 0
+        const regenerateCount = hasLocked ? promptCount - lockedSet.size : promptCount
+
         const userMessage = buildUserMessage(
-          userInputs, promptCount, targetModel, mode,
+          userInputs, regenerateCount > 0 ? regenerateCount : promptCount, targetModel, mode,
           visualStyleCues, imageLabels, creativeBrief
         )
 
@@ -226,8 +235,25 @@ export async function POST(request: NextRequest) {
 
         const parsed = parseJsonResponse(promptResponse, PromptsResponseSchema)
 
+        // Merge locked prompts back into their original positions
+        let finalPrompts: Array<{ label: string; prompt: string; negativePrompt?: string }>
+        if (hasLocked) {
+          finalPrompts = []
+          let newIdx = 0
+          for (let i = 0; i < promptCount; i++) {
+            if (lockedSet.has(i) && i < existingPrompts.length) {
+              finalPrompts.push(existingPrompts[i])
+            } else if (newIdx < parsed.prompts.length) {
+              finalPrompts.push(parsed.prompts[newIdx])
+              newIdx++
+            }
+          }
+        } else {
+          finalPrompts = parsed.prompts
+        }
+
         send('prompts', {
-          prompts: parsed.prompts,
+          prompts: finalPrompts,
           visualStyleCues,
           creativeBrief,
           targetModel,

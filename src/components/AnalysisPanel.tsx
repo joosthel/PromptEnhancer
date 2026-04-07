@@ -12,7 +12,7 @@ export default function AnalysisPanel({ cues, defaultOpen = false }: AnalysisPan
   const [open, setOpen] = useState(defaultOpen)
 
   return (
-    <div className="border border-neutral-200 rounded-sm">
+    <div className="border border-neutral-200 rounded-sm overflow-hidden min-w-0">
       <button
         onClick={() => setOpen(!open)}
         className="w-full flex items-center justify-between px-4 py-3 text-left"
@@ -26,8 +26,8 @@ export default function AnalysisPanel({ cues, defaultOpen = false }: AnalysisPan
       {open && (
         <div className="px-4 pb-4 space-y-4 border-t border-neutral-100">
           {cues.hexPalette?.length > 0 && (
-            <div className="flex items-center gap-3 pt-3">
-              <div className="flex gap-1.5">
+            <div className="flex items-center gap-2 pt-3 min-w-0">
+              <div className="flex gap-1 shrink-0">
                 {cues.hexPalette.map((hex, i) => (
                   <div
                     key={i}
@@ -37,7 +37,7 @@ export default function AnalysisPanel({ cues, defaultOpen = false }: AnalysisPan
                   />
                 ))}
               </div>
-              <span className="text-[10px] text-neutral-400 font-mono">
+              <span className="text-[10px] text-neutral-400 font-mono truncate min-w-0">
                 {cues.hexPalette.join(' · ')}
               </span>
             </div>

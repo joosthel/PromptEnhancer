@@ -229,7 +229,7 @@ export default function PromptList({
                   )}
                   <div className="flex flex-wrap gap-1.5 pt-1">
                     {creativeBrief.unexpectedElement && (
-                      <span className="text-[10px] px-2 py-0.5 bg-neutral-800 text-neutral-200 rounded-sm">↯ {creativeBrief.unexpectedElement}</span>
+                      <span className="text-[10px] px-2 py-0.5 bg-neutral-800 text-neutral-200 rounded-sm break-words">↯ {creativeBrief.unexpectedElement}</span>
                     )}
                     {creativeBrief.dominantCreativePriority && (
                       <span className="text-[10px] px-2 py-0.5 bg-neutral-100 text-neutral-500 rounded-sm font-mono uppercase tracking-wide">{creativeBrief.dominantCreativePriority}</span>
@@ -279,8 +279,8 @@ export default function PromptList({
 
               {/* Color anchors */}
               {creativeBrief.colorAnchors?.length > 0 && (
-                <div className="flex items-center gap-3 pt-2">
-                  <div className="flex gap-1.5">
+                <div className="flex items-center gap-2 pt-2 min-w-0">
+                  <div className="flex gap-1 shrink-0">
                     {creativeBrief.colorAnchors.map((hex, i) => (
                       <div
                         key={i}
@@ -290,7 +290,7 @@ export default function PromptList({
                       />
                     ))}
                   </div>
-                  <span className="text-xs text-neutral-400 font-mono">
+                  <span className="text-xs text-neutral-400 font-mono truncate min-w-0">
                     {creativeBrief.colorAnchors.join(' \u00b7 ')}
                   </span>
                 </div>
@@ -335,8 +335,8 @@ export default function PromptList({
           {showCues && (
             <div className="px-4 pb-4 space-y-4 border-t border-neutral-100">
               {visualStyleCues.hexPalette?.length > 0 && (
-                <div className="flex items-center gap-3 pt-3">
-                  <div className="flex gap-1.5">
+                <div className="flex items-center gap-2 pt-3 min-w-0">
+                  <div className="flex gap-1 shrink-0">
                     {visualStyleCues.hexPalette.map((hex, i) => (
                       <div
                         key={i}
@@ -346,7 +346,7 @@ export default function PromptList({
                       />
                     ))}
                   </div>
-                  <span className="text-xs text-neutral-400 font-mono">
+                  <span className="text-xs text-neutral-400 font-mono truncate min-w-0">
                     {visualStyleCues.hexPalette.join(' \u00b7 ')}
                   </span>
                 </div>

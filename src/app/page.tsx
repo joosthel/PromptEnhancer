@@ -10,6 +10,7 @@ import BriefPanel from '@/components/BriefPanel'
 import AnalysisPanel from '@/components/AnalysisPanel'
 import LoadingAnimation, { type LoadingPhase as AnimLoadingPhase } from '@/components/LoadingAnimation'
 import HelpModal from '@/components/HelpModal'
+import RegeneratePopup from '@/components/RegeneratePopup'
 import Footer from '@/components/Footer'
 import { ImageInput, computeImageFingerprint } from '@/lib/image-utils'
 import { UserInputs, VisualStyleCues, ImageLabel, CreativeBrief } from '@/lib/system-prompt'
@@ -66,6 +67,7 @@ export default function Home() {
   const [visionCache, setVisionCache] = useState<{ fingerprint: string; cues: VisualStyleCues } | null>(null)
   const [helpOpen, setHelpOpen] = useState(false)
   const [showIntro, setShowIntro] = useState(false)
+  const [regenOpen, setRegenOpen] = useState(false)
 
   // Art Direction brief — persists across mode switches so it can be reused for generation
   const [artBrief, setArtBrief] = useState<{ brief: CreativeBrief; cues?: VisualStyleCues } | null>(null)
@@ -396,6 +398,103 @@ export default function Home() {
     )
   }
 
+  async function handleSelectiveRegenerate(lockedIndices: Set<number>) {
+    if (!result?.prompts) return
+    setRegenOpen(false)
+
+    const hasImages = images.length > 0
+    const fingerprint = hasImages ? computeImageFingerprint(images) : ''
+    const hasCachedCues = hasImages && visionCache?.fingerprint === fingerprint
+
+    setLoadingPhase('generating')
+
+    try {
+      const serializedImages = images.map((img) => {
+        if (img.type === 'base64') {
+          return { type: 'base64' as const, data: img.data, mimeType: img.mimeType }
+        }
+        return { type: 'url' as const, url: img.url }
+      })
+
+      const response = await fetch('/api/generate-stream', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          images: hasCachedCues ? [] : serializedImages,
+          cachedVisionCues: hasCachedCues ? visionCache!.cues : undefined,
+          cachedBrief: result.creativeBrief ?? (artBrief?.brief || undefined),
+          userInputs,
+          promptCount: result.prompts.length,
+          targetModel: activeModel,
+          mode: activeMode,
+          imageLabels: imageLabels.length > 0 ? imageLabels : undefined,
+          lockedIndices: Array.from(lockedIndices),
+          existingPrompts: result.prompts,
+        }),
+      })
+
+      if (!response.ok || !response.body) {
+        const text = await response.text()
+        throw new Error(text || `Request failed with status ${response.status}`)
+      }
+
+      const reader = response.body.getReader()
+      const decoder = new TextDecoder()
+      let buffer = ''
+
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+
+        buffer += decoder.decode(value, { stream: true })
+        const events = buffer.split('\n\n')
+        buffer = events.pop() ?? ''
+
+        for (const eventStr of events) {
+          if (!eventStr.trim()) continue
+          const lines = eventStr.split('\n')
+          let eventName = ''
+          let eventData = ''
+          for (const line of lines) {
+            if (line.startsWith('event: ')) eventName = line.slice(7)
+            else if (line.startsWith('data: ')) eventData = line.slice(6)
+          }
+          if (!eventName || !eventData) continue
+
+          try {
+            const data = JSON.parse(eventData)
+            switch (eventName) {
+              case 'phase':
+                if (data.phase === 'generating') setLoadingPhase('generating')
+                break
+              case 'prompts':
+                setResult(prev => ({
+                  prompts: data.prompts,
+                  visualStyleCues: data.visualStyleCues ?? prev?.visualStyleCues,
+                  creativeBrief: data.creativeBrief ?? prev?.creativeBrief,
+                }))
+                break
+              case 'done':
+                setLoadingPhase('done')
+                break
+              case 'error':
+                throw new Error(data.error ?? 'An unexpected error occurred')
+            }
+          } catch (parseErr) {
+            if (parseErr instanceof Error && parseErr.message !== 'An unexpected error occurred') {
+              throw parseErr
+            }
+          }
+        }
+      }
+
+      setLoadingPhase(prev => prev === 'idle' ? 'idle' : 'done')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'An unexpected error occurred')
+      setLoadingPhase('idle')
+    }
+  }
+
   // ---------- Derived state ----------
 
   const isLoading = loadingPhase === 'analyzing' || loadingPhase === 'briefing' || loadingPhase === 'generating'
@@ -599,17 +698,31 @@ export default function Home() {
 
             {/* Normal prompt results — show as soon as prompts arrive */}
             {result && hasPrompts && (
-              <PromptList
-                prompts={result.prompts}
-                visualStyleCues={result.visualStyleCues}
-                creativeBrief={result.creativeBrief}
-                userInputs={userInputs}
-                activeModel={activeModel}
-                activeMode={activeMode}
-                onPromptUpdate={handlePromptUpdate}
-                displayMode="full"
-                hideBriefAndAnalysis
-              />
+              <>
+                <PromptList
+                  prompts={result.prompts}
+                  visualStyleCues={result.visualStyleCues}
+                  creativeBrief={result.creativeBrief}
+                  userInputs={userInputs}
+                  activeModel={activeModel}
+                  activeMode={activeMode}
+                  onPromptUpdate={handlePromptUpdate}
+                  displayMode="full"
+                  hideBriefAndAnalysis
+                />
+
+                {/* Selective regeneration */}
+                {!isLoading && (
+                  <div className="flex justify-center pt-2">
+                    <button
+                      onClick={() => setRegenOpen(true)}
+                      className="text-xs text-neutral-400 hover:text-neutral-600 transition-colors uppercase tracking-wider"
+                    >
+                      Regenerate selectively
+                    </button>
+                  </div>
+                )}
+              </>
             )}
           </div>
         </div>
@@ -690,6 +803,13 @@ export default function Home() {
       {/* Modals */}
       <HelpModal open={helpOpen} onClose={() => setHelpOpen(false)} />
       <CreditPopup open={showCreditPopup} onContinue={handleCreditConfirm} onCancel={handleCreditCancel} />
+      <RegeneratePopup
+        open={regenOpen}
+        prompts={result?.prompts ?? []}
+        isLoading={isLoading}
+        onRegenerate={handleSelectiveRegenerate}
+        onCancel={() => setRegenOpen(false)}
+      />
 
       {/* First-visit intro */}
       {showIntro && (

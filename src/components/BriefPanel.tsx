@@ -12,7 +12,7 @@ export default function BriefPanel({ brief, defaultOpen = false }: BriefPanelPro
   const [open, setOpen] = useState(defaultOpen)
 
   return (
-    <div className="border border-neutral-200 rounded-sm">
+    <div className="border border-neutral-200 rounded-sm overflow-hidden min-w-0">
       <button
         onClick={() => setOpen(!open)}
         className="w-full flex items-center justify-between px-4 py-3 text-left"
@@ -24,7 +24,7 @@ export default function BriefPanel({ brief, defaultOpen = false }: BriefPanelPro
       </button>
 
       {open && (
-        <div className="px-4 pb-4 space-y-3 border-t border-neutral-100 min-w-0">
+        <div className="px-4 pb-4 space-y-3 border-t border-neutral-100 min-w-0 overflow-hidden">
           {brief.creativeVision && (
             <div className="pt-3 space-y-2 pb-3 border-b border-neutral-100">
               <p className="text-xs text-neutral-800 leading-relaxed font-medium italic break-words">
@@ -35,7 +35,7 @@ export default function BriefPanel({ brief, defaultOpen = false }: BriefPanelPro
               )}
               <div className="flex flex-wrap gap-1.5 pt-1">
                 {brief.unexpectedElement && (
-                  <span className="text-[10px] px-2 py-0.5 bg-neutral-800 text-neutral-200 rounded-sm">
+                  <span className="text-[10px] px-2 py-0.5 bg-neutral-800 text-neutral-200 rounded-sm break-words">
                     ↯ {brief.unexpectedElement}
                   </span>
                 )}
@@ -97,8 +97,8 @@ export default function BriefPanel({ brief, defaultOpen = false }: BriefPanelPro
           )}
 
           {brief.colorAnchors?.length > 0 && (
-            <div className="flex items-center gap-3 pt-2">
-              <div className="flex gap-1.5">
+            <div className="flex items-center gap-2 pt-2 min-w-0">
+              <div className="flex gap-1 shrink-0">
                 {brief.colorAnchors.map((hex, i) => (
                   <div
                     key={i}
@@ -108,7 +108,7 @@ export default function BriefPanel({ brief, defaultOpen = false }: BriefPanelPro
                   />
                 ))}
               </div>
-              <span className="text-[10px] text-neutral-400 font-mono">
+              <span className="text-[10px] text-neutral-400 font-mono truncate min-w-0">
                 {brief.colorAnchors.join(' · ')}
               </span>
             </div>

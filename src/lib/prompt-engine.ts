@@ -782,13 +782,68 @@ export function buildUserMessage(
     return lines.join('\n')
   }
 
-  // Video mode — brief-aware
+  // Video mode — brief-aware with per-frame shot cards
   if (mode === 'video') {
     lines.push(`Each prompt is a separate shot in a sequence — maintain visual continuity across all shots.`)
 
     if (creativeBrief) {
-      lines.push('\n=== CREATIVE BRIEF (structure and continuity) ===')
-      lines.push(creativeBrief.fullBrief)
+      // Creative vision — the art direction layer
+      if (creativeBrief.creativeVision) {
+        lines.push('')
+        lines.push('=== CREATIVE VISION — YOUR NORTH STAR ===')
+        lines.push(`VISION: ${creativeBrief.creativeVision}`)
+        lines.push(`METAPHOR: ${creativeBrief.visualMetaphor}`)
+        lines.push(`SURPRISE ELEMENT: ${creativeBrief.unexpectedElement}`)
+        lines.push(`DOMINANT PRIORITY: ${creativeBrief.dominantCreativePriority}`)
+      }
+
+      // Per-frame shot cards — compositional contract for each clip
+      if (creativeBrief.concepts?.length > 0) {
+        lines.push('')
+        lines.push('=== PER-FRAME SHOT CARDS ===')
+        lines.push('Each shot card defines the COMPOSITION and EMOTION of one clip. Translate into temporal language with camera movement and action.')
+        const frameMap = new Map<number, typeof creativeBrief.concepts>()
+        for (const c of creativeBrief.concepts) {
+          const arr = frameMap.get(c.frame) ?? []
+          arr.push(c)
+          frameMap.set(c.frame, arr)
+        }
+        for (const [frame, concepts] of Array.from(frameMap.entries()).sort((a, b) => a[0] - b[0])) {
+          const primary = concepts.find(c => c.role === 'primary')
+          const supporting = concepts.filter(c => c.role !== 'primary')
+          lines.push(`\n--- CLIP ${frame} ---`)
+          if (primary) {
+            lines.push(`  CONCEPT: ${primary.concept}`)
+            lines.push(`  5-word pitch: "${primary.fiveWordPitch}"`)
+            lines.push(`  EMOTIONAL INTENT: ${primary.emotionalIntent ?? ''}`)
+            lines.push(`  FRAME PRIORITY: ${primary.framePriority ?? creativeBrief.dominantCreativePriority ?? 'lighting'}`)
+            lines.push(`  SENSORY HOOK: ${primary.sensoryHook ?? ''}`)
+            lines.push(`  SHOT SCALE: ${primary.shotScale ?? 'medium'}`)
+            lines.push(`  CAMERA ANGLE: ${primary.cameraAngle ?? 'eye-level'}`)
+            lines.push(`  SUBJECT PLACEMENT: ${primary.subjectPlacement ?? 'rule-of-thirds'}`)
+            lines.push(`  DEPTH PLANES: ${primary.depthPlanes ?? 'foreground/midground/background — specify in prompt'}`)
+            lines.push(`  ENERGY STATE: ${primary.energyState ?? 'static tension'}`)
+            lines.push(`  CAMERA-TO-LIGHT: ${primary.cameraToLight ?? 'side-lit'}`)
+          }
+          for (const s of supporting) {
+            lines.push(`  SUPPORTING: ${s.concept}`)
+          }
+        }
+        lines.push('')
+        lines.push('CRITICAL: Each clip must be visually DISTINCT — different camera movement, different scale, different energy.')
+      }
+
+      lines.push('')
+      lines.push('=== GLOBAL VISUAL IDENTITY (shared across all clips) ===')
+      lines.push(`COLOR GRADE (copy VERBATIM): ${creativeBrief.colorGrade}`)
+      lines.push(`COLOR ANCHORS: ${creativeBrief.colorAnchors.join(', ')}`)
+      lines.push(`LIGHT SOURCE: ${creativeBrief.lightSource}`)
+      lines.push(`MATERIALS: ${creativeBrief.materials}`)
+      lines.push(`MOOD (baseline): ${creativeBrief.mood}`)
+      lines.push(`SUBJECT: ${creativeBrief.subjectDirection}`)
+      lines.push(`ENVIRONMENT: ${creativeBrief.environmentDirection}`)
+      lines.push(`MOTIFS: ${creativeBrief.visualMotifs.join(' | ')}`)
+      lines.push(`ARC: ${creativeBrief.narrativeArc}`)
     }
 
     if (visualStyleCues) {
@@ -801,13 +856,14 @@ export function buildUserMessage(
     }
 
     if (userInputs.description.trim()) {
-      lines.push('\n=== CREATIVE DIRECTION ===')
+      lines.push('\n=== ORIGINAL CREATIVE DIRECTION (hard constraints) ===')
       lines.push(userInputs.description)
     }
 
-    lines.push('\n=== VIDEO REMINDER ===')
+    lines.push('\n=== VIDEO RULES ===')
     lines.push('Focus on motion, camera movement, and temporal evolution. The reference image (if any) establishes the visual ground truth — your prompt adds the temporal dimension.')
     lines.push('AUTHORITY: User constraints > Visual ground truth > Brief.')
+    lines.push('Each clip must be compositionally DISTINCT from every other.')
 
     return lines.join('\n')
   }
