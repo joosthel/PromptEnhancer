@@ -8,10 +8,11 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { callOpenRouter, parseJsonResponse } from '@/lib/openrouter'
+import { callOpenRouterWithFallback, parseJsonResponse, TEXT_MODEL, TEXT_MODEL_FALLBACK } from '@/lib/openrouter'
 import { UserInputs, VisualStyleCues } from '@/lib/system-prompt'
 import { buildRevisionSystemPrompt, buildRevisionUserMessage } from '@/lib/prompt-engine'
-import { TargetModel, GenerationMode } from '@/lib/model-profiles'
+import { TargetModel, GenerationMode, VALID_TARGET_MODELS, VALID_GENERATION_MODES } from '@/lib/model-profiles'
+import { rateLimit } from '@/lib/rate-limit'
 
 export const maxDuration = 60
 
@@ -43,9 +44,26 @@ export async function POST(request: NextRequest) {
     )
   }
 
+  const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown'
+  const limit = rateLimit(ip)
+  if (!limit.success) {
+    return NextResponse.json(
+      { error: 'Too many requests. Please wait a moment.' },
+      { status: 429, headers: { 'Retry-After': '60' } }
+    )
+  }
+
   try {
     const body: ReviseRequest = await request.json()
     const { prompt, label, revisionNote, fixCategory, history, userInputs, visualStyleCues, targetModel: rawTargetModel, mode: rawMode } = body
+
+    if (rawTargetModel && !VALID_TARGET_MODELS.has(rawTargetModel)) {
+      return NextResponse.json({ error: 'Invalid target model.' }, { status: 400 })
+    }
+    if (rawMode && !VALID_GENERATION_MODES.has(rawMode)) {
+      return NextResponse.json({ error: 'Invalid generation mode.' }, { status: 400 })
+    }
+
     const targetModel: TargetModel = rawTargetModel ?? 'flux-2-klein-9b'
     const mode: GenerationMode = rawMode ?? 'generate'
 
@@ -67,8 +85,8 @@ export async function POST(request: NextRequest) {
       prompt, label, revisionNote, fixCategory, history, userInputs, visualStyleCues
     )
 
-    const reviseResponse = await callOpenRouter({
-      model: 'deepseek/deepseek-v3.2',
+    const reviseResponse = await callOpenRouterWithFallback({
+      model: TEXT_MODEL,
       apiKey,
       responseFormat: 'json_object',
       temperature: 0.3,
@@ -79,7 +97,7 @@ export async function POST(request: NextRequest) {
         { role: 'system', content: buildRevisionSystemPrompt(targetModel, mode) },
         { role: 'user', content: userMessage },
       ],
-    })
+    }, TEXT_MODEL_FALLBACK)
 
     const parsed = parseJsonResponse<{ prompt: string }>(reviseResponse)
 

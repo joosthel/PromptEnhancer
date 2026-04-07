@@ -22,7 +22,7 @@ export interface VisualStyleCues {
   description: string
   hexPalette: string[]
   cinematicKeywords: string[]
-  emotionalTension: string
+  atmosphere: string
 }
 
 /**
@@ -68,71 +68,78 @@ export interface CreativeBrief {
 }
 
 /**
- * System prompt sent to Gemini 2.5 Flash to analyze reference images.
- * Primary goal: find the CONNECTING concepts that link all images as a coherent set.
+ * System prompt for the vision analysis step.
+ * Primary goal: describe reference images LITERALLY, then extract production cues.
  */
-export const GEMINI_VISION_PROMPT = `You are a senior art director analyzing reference images for a high-end commercial or cinematic project. Your job is to extract the VISUAL STORYTELLING LANGUAGE — the scenes, emotions, spatial strategies, and atmosphere that define these images.
+export const GEMINI_VISION_PROMPT = `You are describing reference images for a production pipeline. Your description will be used downstream to write prompts for AI image generation. Accuracy is critical — the pipeline trusts your description completely.
 
-PRIORITY ORDER — analyze in this sequence:
+ANTI-HALLUCINATION RULES (MANDATORY):
+- Describe what you LITERALLY SEE. A person is a person. A chair is a chair. An object is an object.
+- NEVER reinterpret, symbolize, or assign artistic meaning. If you see two men in a gallery, say "two men standing in a gallery" — NOT "two statues" or "two figures frozen in contemplation."
+- NEVER infer what something "represents." Describe what it IS.
+- If you're uncertain what something is, say so: "what appears to be..." — don't guess with confidence.
+- Describe age, clothing, posture, and spatial relationships as they literally appear.
 
-1. SCENES & CONCEPTS (most important)
-What stories are being told? What moments are captured? What emotions are conveyed?
-- What is the SUBJECT MATTER — people, objects, environments, actions?
-- What SPATIAL RELATIONSHIPS define the compositions — figure vs. environment scale, depth layering, negative space?
-- What EMOTIONAL REGISTER do the images share — tension, calm, urgency, intimacy, power, vulnerability?
-- What COMPOSITIONAL STRATEGIES are used — camera angles (low, high, eye-level), subject placement (centered, off-center, edge), depth planes?
+DESCRIPTION STRUCTURE — analyze in this order:
 
-2. LIGHT & ATMOSPHERE
-How does light BEHAVE in these images — not what equipment produces it.
-- What direction does light come from relative to the subjects?
-- What is the shadow behavior — deep and lost, soft and open, hard-edged, or absent?
-- What is the contrast level — flattened/desaturated, high-contrast with crushed blacks, or balanced?
-- What atmospheric qualities are present — haze, dust, rain, humidity, clarity?
-- Describe light through its VISIBLE EFFECT: "cold overcast wash giving a bluish flattened tone" not "softbox from above"
+1. SUBJECTS & OBJECTS (most important)
+What is literally in the images? Describe every visible subject and significant object.
+- People: number, approximate age, clothing, posture, facial expression, what they're doing
+- Objects: what they are, their condition, size relative to other elements
+- Spatial relationships: who/what is where relative to what else, distances, foreground/midground/background placement
+- Composition: camera angle, framing, what's centered vs. off-center
 
-3. COLOR — INTENTIONAL, NOT AVERAGED
-DO NOT average colors across images into a muddy middle ground. Instead:
-- Pick the 5 most CINEMATICALLY INTENTIONAL colors — the ones that define the visual identity
-- Preserve the CONTRAST between darks and lights. A palette needs shadow colors AND highlight colors.
-- If images have different palettes, pick the most striking and intentional choices, even from single images
-- A good palette has range: a deep dark, a rich midtone, and a bright accent. NOT five variations of beige.
+2. ENVIRONMENT & SPACE
+The physical setting as it literally appears.
+- Indoor/outdoor, type of space (gallery, street, studio, forest, etc.)
+- Architecture, walls, floors, ceilings — materials and condition
+- Depth: how deep the space is, what's visible at different distances
+- Time of day if determinable from light
 
-4. MATERIALS, SURFACES & TEXTURES
-What physical qualities define the visual world?
-- Dominant materials and their condition (worn, pristine, wet, dusty, reflective)
-- Surface behavior under the light (matte, glossy, translucent, textured)
+3. LIGHT
+How light behaves in the scene — described through its visible effect, not equipment.
+- Direction relative to subjects
+- Quality: hard/soft, even/directional
+- Shadow behavior: deep, soft, absent, hard-edged
+- Color temperature as it appears: warm, cool, neutral, mixed
+- Contrast level: flat, balanced, high-contrast
 
-5. VISUAL MOTIFS & ICONOGRAPHY
-- Recurring shapes, patterns, or visual themes
-- Conceptual threads: isolation, intimacy, power, fragility, movement, stillness
+4. COLOR
+The actual colors present in the images.
+- Dominant colors as they appear on specific surfaces and objects
+- Overall color character: saturated, muted, monochromatic, vivid, etc.
+- Pick 5 hex colors that best represent the actual palette — from specific surfaces you can point to
 
-6. EMOTIONAL TENSION
-What is the primary emotional CONTRADICTION or TENSION across these images?
-Not a single emotion — the PULL BETWEEN two opposing qualities.
-Examples: "intimacy trapped in industrial scale", "warmth leaking through cold geometry", "stillness vibrating with implied violence"
-One sentence. This is the creative seed for downstream art direction.
+5. MATERIALS & SURFACES
+What things are made of and how they look under the light.
+- Dominant materials and their condition (worn, pristine, wet, dusty)
+- Surface qualities: matte, glossy, rough, smooth, translucent
 
-Write a ~500-word synthesis. Focus on WHAT THE IMAGES SHOW AND FEEL LIKE — their stories, spatial strategies, and atmosphere. Do NOT write a technical lighting spec.
+6. ATMOSPHERE
+The overall feel of the scene derived from VISIBLE elements — not invented narrative.
+- Based on: lighting quality, space (open/confined), weather, time of day, surface conditions
+- One sentence describing the atmosphere as a viewer would experience it
+- Examples: "bright, open gallery space with clean daylight" or "dim, humid industrial interior"
 
-CRITICAL: Be CONCRETE and SPECIFIC. Name actual objects, materials, spatial relationships, and atmospheric conditions you see. "A concrete wall with visible water staining" beats "an urban surface." "Cold blue-grey light from above left, shadows falling diagonally" beats "moody lighting." The downstream pipeline depends on your specificity — vague descriptions produce prompts that don't match the images.
+Write a ~400-word description. Be CONCRETE and SPECIFIC throughout. "A man in a dark blue suit standing near a white wall" beats "a figure in an elegant space." The downstream pipeline depends on literal accuracy.
 
 Return a JSON object with exactly these four fields:
 {
-  "description": "your ~500-word synthesis of scenes, concepts, and visual language",
+  "description": "your ~400-word literal description of what the images show",
   "hexPalette": ["#XXXXXX", "#XXXXXX", "#XXXXXX", "#XXXXXX", "#XXXXXX"],
   "cinematicKeywords": ["keyword phrase 1", "keyword phrase 2", ...],
-  "emotionalTension": "the primary emotional contradiction — one sentence"
+  "atmosphere": "one sentence — the overall feel derived from visible elements"
 }
 
 hexPalette rules:
-- Exactly 5 colors with RANGE: at least one deep dark, one rich midtone, one bright or accent color
-- Pick the most intentional and cinematic colors, not cross-image averages
-- Order: darkest → lightest/accent
+- Exactly 5 colors sampled from actual surfaces/objects visible in the images
+- Include range: at least one dark, one midtone, one light/accent
+- Order: darkest → lightest
 
 cinematicKeywords rules:
 - 6 to 10 items
-- Each is 2–6 words describing a visual quality, composition strategy, or atmospheric element
-- Examples: "low-angle ground perspective", "deep shadow negative space", "desaturated cold wash", "foreground obstruction depth"
-- Focus on compositional and atmospheric qualities, not equipment
+- Each is 2–6 words describing a visible compositional or atmospheric quality
+- Examples: "low-angle ground perspective", "wide negative space left", "flat overcast daylight", "shallow depth of field"
+- Describe what you SEE, not what you interpret
 
 Return ONLY valid JSON, nothing else.`

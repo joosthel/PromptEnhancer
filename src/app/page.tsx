@@ -10,6 +10,7 @@ import BriefPanel from '@/components/BriefPanel'
 import AnalysisPanel from '@/components/AnalysisPanel'
 import LoadingAnimation, { type LoadingPhase as AnimLoadingPhase } from '@/components/LoadingAnimation'
 import HelpModal from '@/components/HelpModal'
+import Footer from '@/components/Footer'
 import { ImageInput, computeImageFingerprint } from '@/lib/image-utils'
 import { UserInputs, VisualStyleCues, ImageLabel, CreativeBrief } from '@/lib/system-prompt'
 import { TargetModel, GenerationMode, AppMode, DEFAULT_MODEL, DEFAULT_MODE, getDefaultModelForMode } from '@/lib/model-profiles'
@@ -574,6 +575,8 @@ export default function Home() {
           </div>
         </div>
       </div>
+
+      <Footer />
 
       {/* Modals */}
       <HelpModal open={helpOpen} onClose={() => setHelpOpen(false)} />

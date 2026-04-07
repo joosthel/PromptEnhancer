@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { callOpenRouter, parseJsonResponse, ContentPart } from '@/lib/openrouter'
+import { callOpenRouter, callOpenRouterWithFallback, parseJsonResponse, ContentPart, TEXT_MODEL, TEXT_MODEL_FALLBACK, VISION_MODEL, VISION_MODEL_FALLBACK } from '@/lib/openrouter'
 import { GEMINI_VISION_PROMPT, UserInputs, VisualStyleCues, ImageLabel, CreativeBrief } from '@/lib/system-prompt'
 import { buildSystemPrompt, buildUserMessage, BRIEF_SYSTEM_PROMPT, buildBriefUserMessage } from '@/lib/prompt-engine'
-import { TargetModel, GenerationMode } from '@/lib/model-profiles'
+import { TargetModel, GenerationMode, VALID_TARGET_MODELS, VALID_GENERATION_MODES } from '@/lib/model-profiles'
+import { rateLimit } from '@/lib/rate-limit'
 
-export const maxDuration = 180
+export const maxDuration = 60
 
 export interface GenerateRequest {
   images: Array<
@@ -38,9 +39,26 @@ export async function POST(request: NextRequest) {
     )
   }
 
+  const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown'
+  const limit = rateLimit(ip)
+  if (!limit.success) {
+    return NextResponse.json(
+      { error: 'Too many requests. Please wait a moment.' },
+      { status: 429, headers: { 'Retry-After': '60' } }
+    )
+  }
+
   try {
     const body: GenerateRequest = await request.json()
     const { images, userInputs, promptCount, targetModel: rawTargetModel, mode: rawMode, imageLabels, cachedVisionCues } = body
+
+    if (rawTargetModel && !VALID_TARGET_MODELS.has(rawTargetModel)) {
+      return NextResponse.json({ error: 'Invalid target model.' }, { status: 400 })
+    }
+    if (rawMode && !VALID_GENERATION_MODES.has(rawMode)) {
+      return NextResponse.json({ error: 'Invalid generation mode.' }, { status: 400 })
+    }
+
     const targetModel: TargetModel = rawTargetModel ?? 'flux-2-klein-9b'
     const mode: GenerationMode = rawMode ?? 'generate'
 
@@ -59,6 +77,17 @@ export async function POST(request: NextRequest) {
         { error: 'Edit mode requires at least one reference image' },
         { status: 400 }
       )
+    }
+
+    if (hasImages && images.length > 6) {
+      return NextResponse.json({ error: 'Maximum 6 reference images.' }, { status: 400 })
+    }
+    if (hasImages) {
+      for (const img of images) {
+        if (img.type === 'base64' && img.data.length > 2_800_000) {
+          return NextResponse.json({ error: 'Image too large. Max ~2MB per image.' }, { status: 400 })
+        }
+      }
     }
 
     let visualStyleCues: VisualStyleCues | undefined
@@ -83,12 +112,12 @@ export async function POST(request: NextRequest) {
         { type: 'text', text: GEMINI_VISION_PROMPT },
       ]
 
-      const visionResponse = await callOpenRouter({
-        model: 'google/gemini-2.5-flash',
+      const visionResponse = await callOpenRouterWithFallback({
+        model: VISION_MODEL,
         apiKey,
         responseFormat: 'json_object',
         messages: [{ role: 'user', content: visionContent }],
-      })
+      }, VISION_MODEL_FALLBACK)
 
       try {
         visualStyleCues = parseJsonResponse<VisualStyleCues>(visionResponse)
@@ -108,8 +137,8 @@ export async function POST(request: NextRequest) {
     } else if (mode === 'generate' || mode === 'video' || (mode === 'edit' && hasUserInputs)) {
       const briefUserMessage = buildBriefUserMessage(userInputs, mode, promptCount, visualStyleCues, imageLabels)
 
-      const briefResponse = await callOpenRouter({
-        model: 'deepseek/deepseek-v3.2',
+      const briefResponse = await callOpenRouterWithFallback({
+        model: TEXT_MODEL,
         apiKey,
         responseFormat: 'json_object',
         temperature: 0.5,
@@ -120,7 +149,7 @@ export async function POST(request: NextRequest) {
           { role: 'system', content: BRIEF_SYSTEM_PROMPT },
           { role: 'user', content: briefUserMessage },
         ],
-      })
+      }, TEXT_MODEL_FALLBACK)
 
       try {
         creativeBrief = parseJsonResponse<CreativeBrief>(briefResponse)
@@ -142,8 +171,8 @@ export async function POST(request: NextRequest) {
       visualStyleCues, imageLabels, creativeBrief
     )
 
-    const promptResponse = await callOpenRouter({
-      model: 'deepseek/deepseek-v3.2',
+    const promptResponse = await callOpenRouterWithFallback({
+      model: TEXT_MODEL,
       apiKey,
       responseFormat: 'json_object',
       temperature: 0.4,
@@ -154,7 +183,7 @@ export async function POST(request: NextRequest) {
         { role: 'system', content: buildSystemPrompt(targetModel, mode) },
         { role: 'user', content: userMessage },
       ],
-    })
+    }, TEXT_MODEL_FALLBACK)
 
     const parsed = parseJsonResponse<{ prompts: Array<{ label: string; prompt: string; negativePrompt?: string }> }>(
       promptResponse

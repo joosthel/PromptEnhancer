@@ -7,6 +7,12 @@
 
 const OPENROUTER_API_URL = 'https://openrouter.ai/api/v1/chat/completions'
 
+/** Centralized model constants — change here to swap models globally. */
+export const TEXT_MODEL = 'qwen/qwen3.6-plus:free'
+export const TEXT_MODEL_FALLBACK = 'deepseek/deepseek-v3.2'
+export const VISION_MODEL = 'google/gemma-4-31b-it'
+export const VISION_MODEL_FALLBACK = 'google/gemini-2.5-flash'
+
 /** A single content part in a multimodal message — either plain text or an image URL. */
 export type ContentPart =
   | { type: 'text'; text: string }
@@ -101,6 +107,23 @@ export async function callOpenRouter(options: OpenRouterOptions): Promise<string
   }
 
   throw new Error('Empty response from OpenRouter after retries')
+}
+
+/**
+ * Wraps {@link callOpenRouter} with automatic model fallback.
+ * If the primary model fails for any reason, retries the same request
+ * with the specified fallback model.
+ */
+export async function callOpenRouterWithFallback(
+  options: OpenRouterOptions,
+  fallbackModel: string
+): Promise<string> {
+  try {
+    return await callOpenRouter(options)
+  } catch (error) {
+    console.warn(`Primary model ${options.model} failed, trying fallback ${fallbackModel}:`, error instanceof Error ? error.message : error)
+    return await callOpenRouter({ ...options, model: fallbackModel })
+  }
 }
 
 /**

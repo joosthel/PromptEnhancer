@@ -371,8 +371,8 @@ export function buildBriefUserMessage(
     if (visualStyleCues.cinematicKeywords?.length > 0) {
       lines.push(`Cinematic Keywords: ${visualStyleCues.cinematicKeywords.join(' | ')}`)
     }
-    if (visualStyleCues.emotionalTension) {
-      lines.push(`Emotional Tension: ${visualStyleCues.emotionalTension}`)
+    if (visualStyleCues.atmosphere) {
+      lines.push(`Atmosphere: ${visualStyleCues.atmosphere}`)
     }
   }
 
@@ -392,6 +392,8 @@ export function buildBriefUserMessage(
       lines.push(`Image ${il.index + 1}: ${il.label}${guidance}`)
     }
   }
+
+  lines.push('LITERAL GROUNDING: Reference image descriptions from the vision step are LITERAL. Do not reinterpret them. If the vision step describes "two men standing in a gallery," treat them as two men standing in a gallery — not as statues, symbols, or artistic elements.')
 
   // --- Text direction: concept and intent ---
   lines.push('\n=== CREATIVE DIRECTION (from user) ===')
@@ -459,7 +461,7 @@ Example: "[verbatim color grade]. The uniform reads #4A5240, the tarmac #6B6B6B.
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 RULES:
-- Total: ${profile.optimalLengthMin}-${profile.optimalLengthMax} words per prompt. Every word must earn its place.
+- Up to ${profile.optimalLengthMax} words per prompt. Shorter is better when the shot card is simple. Every word must earn its place.
 - No abstract emotional language ("dramatic", "powerful", "tense") — express mood through framing and light
 - No equipment names, cinematographer names, director names, film titles
 - Color grade VERBATIM — do not paraphrase it
@@ -475,7 +477,7 @@ VALIDATION:
 - Element 3: concrete action or pose?
 - Element 4: all three depth planes named with optical treatment? Light described through effect?
 - Element 5: color grade verbatim? Hex anchors on named surfaces? Organic texture cue?
-- Total within ${profile.optimalLengthMin}-${profile.optimalLengthMax} words?
+- Total up to ${profile.optimalLengthMax} words?
 
 OUTPUT: Return ONLY valid JSON:
 {
@@ -494,7 +496,7 @@ function buildEditSystemPrompt(targetModel: TargetModel): string {
   const profile = MODEL_PROFILES[targetModel]
   const editRules = profile.editRules ?? ''
 
-  return `You are writing image EDITING prompts. The user has reference images they want to modify. Your prompts must describe the DESIRED RESULT — not the transformation.
+  return `You are writing image EDITING prompts that describe the DESIRED RESULT — not the transformation steps. The user has reference images they want to modify.
 
 TARGET MODEL: ${profile.label}
 ${profile.promptRules}
@@ -503,8 +505,16 @@ ${editRules ? editRules + '\n' : ''}EDIT PROMPT PRINCIPLES:
 - Write in complete sentences describing the DESIRED RESULT — not "change X to Y"
 - Be specific about what should change and what should be preserved
 - One major change per prompt yields best quality
-- Length: ${profile.optimalLengthMin}-${profile.optimalLengthMax} words per prompt
 - Max reference images: ${profile.maxReferenceImages}
+
+LENGTH RULE:
+Match prompt length to edit complexity. Simple spatial edits (swap, move, resize, remove) need 10-30 words. Complex scene changes can use up to ${profile.optimalLengthMax} words. Never pad a simple edit to fill a word count.
+
+FIDELITY RULE:
+Only describe what the user asked to change. Do NOT add lighting, color grade, materials, or atmosphere unless the user specifically mentioned them. Minor preservation context is acceptable ("preserve existing lighting") but never invent new visual elements.
+
+SPATIAL EDIT RULE:
+If the edit is spatial (swap positions, move, resize), write a short, direct prompt. Do not embellish.
 
 REFERENCE IMAGE AWARENESS:
 - "style reference" → apply that image's visual style to the output
@@ -578,7 +588,7 @@ Example: "Desaturated cool tones, warm amber spill — low contrast, intimate. T
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 RULES:
-- Total: ${profile.optimalLengthMin}-${profile.optimalLengthMax} words per prompt
+- Up to ${profile.optimalLengthMax} words per prompt
 - Present tense: "walks", "turns", "catches light" — not "will walk", "walked"
 - No abstract emotional adjectives alone — ground emotion in physical cues
 - Camera movement: always explicit ("slow dolly in", "static locked frame", "handheld tracking")
@@ -634,7 +644,7 @@ export function buildUserMessage(
 
   const lines: string[] = [
     `Generate exactly ${promptCount} ${profile.label} ${modeLabel} prompts.`,
-    `Target: ${profile.optimalLengthMin}-${profile.optimalLengthMax} words per prompt.`,
+    `Up to ${profile.optimalLengthMax} words per prompt. Shorter is fine for simpler compositions.`,
   ]
 
   // Brief-driven generation (primary path for generate mode)
@@ -722,8 +732,8 @@ export function buildUserMessage(
       if (visualStyleCues.cinematicKeywords?.length > 0) {
         lines.push(`Visual qualities (integrate into prompts): ${visualStyleCues.cinematicKeywords.join(' | ')}`)
       }
-      if (visualStyleCues.emotionalTension) {
-        lines.push(`Emotional tension: ${visualStyleCues.emotionalTension}`)
+      if (visualStyleCues.atmosphere) {
+        lines.push(`Atmosphere: ${visualStyleCues.atmosphere}`)
       }
     }
 
@@ -915,52 +925,37 @@ export function buildEnhanceSystemPrompt(targetModel: TargetModel, mode: Generat
   const profile = MODEL_PROFILES[targetModel]
   const modeLabel = mode === 'edit' ? 'editing' : mode === 'video' ? 'video generation' : 'image generation'
 
-  return `You are a senior prompt engineer. You receive a raw, unoptimized ${modeLabel} prompt and you rewrite it into a production-quality prompt precisely optimized for ${profile.label}.
+  return `You are a senior prompt engineer optimizing prompts for ${profile.label}. You receive a raw ${modeLabel} prompt and rewrite it into a production-quality prompt for the target model.
 
 TARGET MODEL: ${profile.label}
 ${profile.promptRules}
 
 ${profile.editRules && mode === 'edit' ? profile.editRules + '\n' : ''}YOUR ROLE:
-- The user's prompt contains the INTENT. Your job is to preserve that intent while restructuring, expanding, and refining for the target model.
-- You are NOT generating a new concept. You are ENHANCING an existing one.
+- The user's prompt contains the INTENT. You are ENHANCING an existing concept, not generating a new one.
+- Analyze what the user's prompt already specifies well and what it's missing. Only add specificity where the original is vague. Preserve everything the user explicitly stated.
 
-ENHANCEMENT PROCESS — rewrite the prompt using this 5-element structure:
+FIDELITY RULE:
+Never change lighting, materials, color, or mood that the user already specified. Only enhance elements that are vague or missing. If the user wrote "warm amber side light", keep it exactly. If they wrote "nice lighting", that's vague — enhance it.
 
-1. CINEMATOGRAPHY — shot scale + camera angle + subject placement (opening sentence, ~10-15 words)
-   If the original has no framing: infer the most cinematically appropriate shot for the content.
+LENGTH RULE:
+Output should be as long as needed, up to ${profile.optimalLengthMax} words. A specific 20-word input may only need 30 words enhanced. Don't pad to fill a word count.
 
-2. SUBJECT — physical description + relationship to spatial anchor (~12-20 words)
-   Replace vague descriptions with specific physical detail: clothing, age, material, condition.
-
-3. ACTION — concrete pose, gesture, energy state (~8-14 words)
-   Replace abstract emotions ("looks sad") with physical cues ("eyes fixed downward, jaw tight").
-
-4. CONTEXT & ENVIRONMENT — three depth planes with optical treatment + light through visible effect + atmosphere (~20-35 words)
-   "beautiful lighting" → direction, quality, shadow behavior, color temperature as feeling
-   "cinematic atmosphere" → specific surface conditions, air quality, ground plane detail
-
-5. STYLE & AMBIANCE — color grade + hex anchors on named surfaces + organic texture cue (~15-22 words)
-   Lock implied palettes to specific surfaces with hex codes. Add one anti-AI texture cue.
-
-Then TRIM: remove filler, synonym chains, meta-language ("a photograph of"), abstract adjectives alone.
-Target: ${profile.optimalLengthMin}-${profile.optimalLengthMax} words.
+ENHANCEMENT APPROACH:
+- Replace vague language with specific, descriptive language (what the camera sees, how surfaces respond to light)
+- Convert keyword lists into complete sentences with semantic relationships
+- If lighting is vague or missing, describe light through its effect on the scene (direction, quality, shadow behavior, color temperature)
+- If atmosphere is vague or missing, add sensory details (air quality, surface reflections, environmental texture)
+- If texture is missing, add organic imperfection cues (grain, pores, wear)
+- Remove filler, synonym chains, meta-language ("a photograph of"), abstract adjectives alone
+- Replace name-dropping (cinematographers, directors, film titles) with descriptions of the visual quality
 
 ${targetModel === 'flux-2-klein-9b' ? CINEMATIC_PROMPT_STYLE + '\n\n' + NATURALISM_VOCABULARY + '\n\n' + QWEN_ENCODER_RULES + '\n' : ''}
 ${FORBIDDEN_LANGUAGE}
 
 WHAT TO PRESERVE:
-- The subject, scene, and emotional register
-- Any specific details the user clearly intended (poses, objects, spatial relationships)
+- Everything the user explicitly specified — lighting, color, mood, materials, poses, objects, spatial relationships
 - The user's creative voice — enhance it, don't replace it
 ${mode === 'edit' ? '- All explicit image references (image 1, image 2, etc.) — these map to the user\'s uploaded reference images and MUST remain in the output\n' : ''}
-WHAT TO CHANGE:
-- Vague language → specific, descriptive language (what the camera sees, how surfaces respond to light)
-- Keyword lists → complete sentences with semantic relationships
-- Missing lighting → describe light through its effect on the scene (direction, quality, shadow behavior, color temperature)
-- Missing atmosphere → add sensory details (air quality, surface reflections, environmental texture)
-- Missing texture → organic imperfection cues (grain, pores, wear)
-- Wrong length → compress or expand to ${profile.optimalLengthMin}-${profile.optimalLengthMax} words
-- Name-dropping (cinematographers, directors, film titles) → describe the visual quality instead
 ${mode === 'edit' ? `
 EDIT-SPECIFIC RULES:
 - The user has uploaded numbered reference images. The enhanced prompt MUST explicitly reference these images by number.
@@ -986,7 +981,7 @@ export function buildEnhanceUserMessage(
   lines.push(rawPrompt)
   lines.push('')
   lines.push(`Target: ${profile.label} (${mode} mode)`)
-  lines.push(`Optimal length: ${profile.optimalLengthMin}-${profile.optimalLengthMax} words`)
+  lines.push(`Up to ${profile.optimalLengthMax} words (shorter is fine if the prompt is already specific)`)
 
   if (imageLabels && imageLabels.length > 0 && mode === 'edit') {
     lines.push('\n=== REFERENCE IMAGE MAP ===')
@@ -1006,12 +1001,12 @@ export function buildEnhanceUserMessage(
     if (visualStyleCues.cinematicKeywords?.length > 0) {
       lines.push(`Visual qualities to integrate: ${visualStyleCues.cinematicKeywords.join(' | ')}`)
     }
-    if (visualStyleCues.emotionalTension) {
-      lines.push(`Emotional tension: ${visualStyleCues.emotionalTension}`)
+    if (visualStyleCues.atmosphere) {
+      lines.push(`Atmosphere: ${visualStyleCues.atmosphere}`)
     }
   }
 
-  lines.push('\nEnhance this prompt for the target model. Preserve the intent. Add specificity, organic texture, and precise visual language. If visual reference is provided, the enhanced prompt MUST match that visual reality — do not invent a different atmosphere or palette.')
+  lines.push('\nEnhance this prompt for the target model. Preserve everything the user explicitly specified — lighting, color, mood, materials. Only add specificity where the original is vague or missing critical elements. Never invent new visual elements the user didn\'t mention. If visual reference is provided, match that visual reality.')
 
   return lines.join('\n')
 }

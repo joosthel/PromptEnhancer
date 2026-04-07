@@ -40,6 +40,12 @@ export type TargetModel =
   | 'kling-o3'
   | 'ltxv-2-3'
 
+/** Runtime validation sets — prevents arbitrary model/mode names from reaching OpenRouter. */
+export const VALID_TARGET_MODELS = new Set<string>([
+  'nanobanana-2', 'flux-2-klein-9b', 'veo-3-1', 'kling-v3', 'kling-o3', 'ltxv-2-3',
+])
+export const VALID_GENERATION_MODES = new Set<string>(['generate', 'edit', 'video'])
+
 export interface ModelProfile {
   id: TargetModel
   label: string

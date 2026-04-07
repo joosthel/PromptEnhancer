@@ -360,9 +360,9 @@ export default function PromptList({
                   ))}
                 </div>
               )}
-              {visualStyleCues.emotionalTension && (
+              {visualStyleCues.atmosphere && (
                 <p className="text-[11px] text-neutral-500 italic border-l-2 border-neutral-200 pl-2">
-                  {visualStyleCues.emotionalTension}
+                  {visualStyleCues.atmosphere}
                 </p>
               )}
               <p className="text-xs text-neutral-600 leading-relaxed whitespace-pre-line break-words">

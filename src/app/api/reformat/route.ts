@@ -8,9 +8,10 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { callOpenRouter, parseJsonResponse } from '@/lib/openrouter'
+import { callOpenRouterWithFallback, parseJsonResponse, TEXT_MODEL, TEXT_MODEL_FALLBACK } from '@/lib/openrouter'
 import { buildReformatSystemPrompt, buildReformatUserMessage } from '@/lib/prompt-engine'
-import { TargetModel } from '@/lib/model-profiles'
+import { TargetModel, VALID_TARGET_MODELS } from '@/lib/model-profiles'
+import { rateLimit } from '@/lib/rate-limit'
 
 export const maxDuration = 60
 
@@ -37,6 +38,15 @@ export async function POST(request: NextRequest) {
     )
   }
 
+  const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown'
+  const limit = rateLimit(ip)
+  if (!limit.success) {
+    return NextResponse.json(
+      { error: 'Too many requests. Please wait a moment.' },
+      { status: 429, headers: { 'Retry-After': '60' } }
+    )
+  }
+
   try {
     const body: ReformatRequest = await request.json()
     const { prompt, label, fromModel, toModel } = body
@@ -55,6 +65,10 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    if (!VALID_TARGET_MODELS.has(fromModel) || !VALID_TARGET_MODELS.has(toModel)) {
+      return NextResponse.json({ error: 'Invalid target model.' }, { status: 400 })
+    }
+
     if (fromModel === toModel) {
       return NextResponse.json(
         { error: 'fromModel and toModel must be different.' },
@@ -64,8 +78,8 @@ export async function POST(request: NextRequest) {
 
     const userMessage = buildReformatUserMessage(prompt, label)
 
-    const reformatResponse = await callOpenRouter({
-      model: 'deepseek/deepseek-v3.2',
+    const reformatResponse = await callOpenRouterWithFallback({
+      model: TEXT_MODEL,
       apiKey,
       responseFormat: 'json_object',
       temperature: 0.3,
@@ -76,7 +90,7 @@ export async function POST(request: NextRequest) {
         { role: 'system', content: buildReformatSystemPrompt(fromModel, toModel) },
         { role: 'user', content: userMessage },
       ],
-    })
+    }, TEXT_MODEL_FALLBACK)
 
     const parsed = parseJsonResponse<{ prompt: string }>(reformatResponse)
 
