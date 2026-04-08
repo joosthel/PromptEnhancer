@@ -34,6 +34,13 @@ export default function Footer() {
           >
             LinkedIn
           </a>
+          <span className="text-neutral-200">&middot;</span>
+          <a
+            href="mailto:joosthelfers@gmail.com?subject=PromptEnhancer%20API%20Access%20Request&body=Hi%20Joost%2C%0A%0AI%27m%20interested%20in%20API%20access%20to%20PromptEnhancer.%0A%0AUse%20case%3A%20%0AExpected%20volume%3A%20%0A%0AThanks!"
+            className="text-neutral-400 hover:text-neutral-600 transition-colors"
+          >
+            API Access
+          </a>
         </div>
       </div>
     </footer>

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect, useCallback, DragEvent } from 'react'
+import { createPortal } from 'react-dom'
 import { ImageInput, fileToImageInput, extractImageFromClipboard, isValidImageUrl } from '@/lib/image-utils'
 import { ImageLabel } from '@/lib/system-prompt'
 
@@ -23,7 +24,9 @@ export default function ImageUploader({ images, imageLabels, maxImages, onChange
   const [urlError, setUrlError] = useState('')
   const [fileSizeError, setFileSizeError] = useState('')
   const [editingLabel, setEditingLabel] = useState<number | null>(null)
+  const [labelPopupPos, setLabelPopupPos] = useState<{ top: number; left: number } | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const thumbRefs = useRef<Map<number, HTMLDivElement>>(new Map())
 
   const limit = maxImages ?? MAX_IMAGES
 
@@ -114,6 +117,25 @@ export default function ImageUploader({ images, imageLabels, maxImages, onChange
     )
   }
 
+  function openLabelEditor(index: number) {
+    if (editingLabel === index) {
+      setEditingLabel(null)
+      setLabelPopupPos(null)
+      return
+    }
+    const el = thumbRefs.current.get(index)
+    if (el) {
+      const rect = el.getBoundingClientRect()
+      const popupWidth = 144 // w-36 = 9rem = 144px
+      const centeredLeft = rect.left + rect.width / 2 - popupWidth / 2
+      setLabelPopupPos({
+        top: rect.bottom + 4,
+        left: Math.max(8, Math.min(centeredLeft, window.innerWidth - popupWidth - 8)),
+      })
+    }
+    setEditingLabel(index)
+  }
+
   function setLabel(index: number, label: string) {
     const existing = imageLabels.filter(l => l.index !== index)
     if (label.trim()) {
@@ -122,6 +144,7 @@ export default function ImageUploader({ images, imageLabels, maxImages, onChange
       onLabelsChange(existing)
     }
     setEditingLabel(null)
+    setLabelPopupPos(null)
   }
 
   function getLabelForIndex(index: number): string {
@@ -174,13 +197,16 @@ export default function ImageUploader({ images, imageLabels, maxImages, onChange
         <div className="flex flex-wrap gap-2">
           {images.map((img, i) => {
             const label = getLabelForIndex(i)
-            const isEditing = editingLabel === i
 
             return (
-              <div key={i} className="relative group">
+              <div
+                key={i}
+                className="relative group"
+                ref={(el) => { if (el) thumbRefs.current.set(i, el); else thumbRefs.current.delete(i) }}
+              >
                 <div
                   className="w-16 h-16 border border-neutral-200 rounded-sm overflow-hidden bg-neutral-100 cursor-pointer"
-                  onClick={() => setEditingLabel(isEditing ? null : i)}
+                  onClick={() => openLabelEditor(i)}
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
@@ -190,42 +216,14 @@ export default function ImageUploader({ images, imageLabels, maxImages, onChange
                   />
                 </div>
                 {/* Label badge */}
-                {label && !isEditing && (
+                {label && editingLabel !== i && (
                   <div
                     className="absolute -bottom-1 left-0 right-0 text-center cursor-pointer"
-                    onClick={() => setEditingLabel(i)}
+                    onClick={() => openLabelEditor(i)}
                   >
                     <span className="text-[9px] px-1 py-0.5 bg-neutral-800 text-white rounded-sm truncate inline-block max-w-[64px]">
                       {label}
                     </span>
-                  </div>
-                )}
-                {/* Label editor */}
-                {isEditing && (
-                  <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1 z-10 bg-white border border-neutral-200 rounded-sm shadow-sm p-1.5 w-36">
-                    <input
-                      type="text"
-                      defaultValue={label}
-                      placeholder="Label this image..."
-                      autoFocus
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') setLabel(i, (e.target as HTMLInputElement).value)
-                        if (e.key === 'Escape') setEditingLabel(null)
-                      }}
-                      onBlur={(e) => setLabel(i, e.target.value)}
-                      className="w-full text-xs border border-neutral-200 rounded-sm px-1.5 py-1 focus:outline-none focus:border-neutral-400 mb-1"
-                    />
-                    <div className="flex flex-wrap gap-0.5">
-                      {LABEL_PRESETS.map((preset) => (
-                        <button
-                          key={preset}
-                          onClick={() => setLabel(i, preset)}
-                          className="text-[9px] px-1 py-0.5 bg-neutral-100 text-neutral-500 rounded-sm hover:bg-neutral-200 transition-colors"
-                        >
-                          {preset}
-                        </button>
-                      ))}
-                    </div>
                   </div>
                 )}
                 {/* Remove button */}
@@ -239,6 +237,40 @@ export default function ImageUploader({ images, imageLabels, maxImages, onChange
               </div>
             )
           })}
+          {/* Label editor — rendered via portal to escape overflow clipping */}
+          {editingLabel !== null && labelPopupPos && createPortal(
+            <div
+              className="fixed z-50 bg-white border border-neutral-200 rounded-sm shadow-sm p-1.5 w-36"
+              style={{ top: labelPopupPos.top, left: labelPopupPos.left }}
+              onMouseDown={(e) => e.preventDefault()}
+            >
+              <input
+                type="text"
+                defaultValue={getLabelForIndex(editingLabel)}
+                placeholder="Label this image..."
+                autoFocus
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') setLabel(editingLabel, (e.target as HTMLInputElement).value)
+                  if (e.key === 'Escape') { setEditingLabel(null); setLabelPopupPos(null) }
+                }}
+                onBlur={(e) => setLabel(editingLabel, e.target.value)}
+                className="w-full text-xs border border-neutral-200 rounded-sm px-1.5 py-1 focus:outline-none focus:border-neutral-400 mb-1"
+              />
+              <div className="flex flex-wrap gap-0.5">
+                {LABEL_PRESETS.map((preset) => (
+                  <button
+                    key={preset}
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => setLabel(editingLabel, preset)}
+                    className="text-[9px] px-1 py-0.5 bg-neutral-100 text-neutral-500 rounded-sm hover:bg-neutral-200 transition-colors"
+                  >
+                    {preset}
+                  </button>
+                ))}
+              </div>
+            </div>,
+            document.body
+          )}
         </div>
       )}
 

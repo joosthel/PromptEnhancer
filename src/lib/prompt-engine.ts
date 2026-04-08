@@ -76,7 +76,7 @@ COLOR — describe the palette through surfaces and atmosphere. Match to the cre
 - Dark/moody: "desaturated, muted tones with minimal contrast", "deep blacks with lifted shadow detail", "color drained to near-monochrome"
 - Bright/clean: "saturated primaries with open highlights", "warm skin tones against vivid environment color", "bright whites and clean color separation"
 - Neutral: "naturalistic color with accurate white balance", "subtle grade preserving original palette"
-- Hex codes bound to surfaces: "the wall is #2C3E50", "skin catching warm #D4956A from the window"
+- Color on surfaces: prefer natural description ("deep slate blue wall", "skin catching warm amber from the window"). Use hex only for precise color matching when critical.
 
 COMPOSITION — describe what the camera sees and why it matters:
 - Angle and feeling: "low angle creating a grounded, urgent perspective", "wide shot emphasizing scale and isolation"
@@ -128,7 +128,7 @@ PROMPT WRITING RULES:
 - Describe RELATIONSHIPS between elements: "warm light raking across the fabric's texture" beats "fabric, warm light"
 - Mood and emotional register translate well — Qwen understands narrative language ("quiet tension", "oppressive weight")
 - Say each concept ONCE, precisely. No synonym chains. No redundant modifiers.
-- Hex codes bound to surfaces: "the wall is #2C3E50" — Klein follows hex values extremely well
+- Color on surfaces: natural description preferred ("deep slate blue wall"). Hex codes only when a precise color match is critical — overuse breaks color integration.
 - Describe light through its EFFECT on surfaces, not through equipment or names
 - NO negative prompts (distilled model). NO prompt weights. NO meta-language ("a photograph of").`
 
@@ -211,7 +211,7 @@ PHASE C: PRODUCTION BRIEF (global — shared across all frames)
 
 1. COLOR GRADE — One sentence. Copied VERBATIM into every prompt.
 
-2. COLOR ANCHORS — 3 to 5 hex colors that define the palette's intention. Include the full range present in the reference images. A monochrome scene may need only 3; a colorful scene should use 4-5. Do NOT force every palette to include a deep dark — if the scene is bright, use bright anchors.
+2. COLOR REFERENCE — 3 to 5 color descriptions that define the palette's intention. Use natural language by default ("warm amber", "deep slate blue", "muted olive"). Include a hex code only when a precise color match is critical. A monochrome scene may need only 2-3; a colorful scene should use 4-5.
 
 3. LIGHT SOURCE — Describe the GLOBAL light source and its quality through visible effect. NOT equipment names.
 Describe: direction, quality (hard/soft), color temperature as feeling, shadow behavior, contrast level.
@@ -272,8 +272,8 @@ RULES:
 GROUNDING RULE — CREATIVE VISION MUST BE DERIVED, NOT INVENTED:
 Your creative vision is an ARTICULATION of what the reference images and user direction already communicate — not a departure from them. If the images show cold industrial interiors, your vision must work WITH that reality, not pivot to something unrelated. The metaphor and unexpected element must DEEPEN what's already there, not contradict or replace it.
 
-COLOR ANCHOR RULE — DERIVED FROM VISUAL ANALYSIS:
-If a visual analysis palette is provided, your 3-5 colorAnchors MUST be selected from or closely matched to colors in the provided hexPalette. Do NOT invent new colors that aren't present in the reference images. The brief's palette must be recognizably the same palette as the images.
+COLOR REFERENCE RULE — DERIVED FROM VISUAL ANALYSIS:
+If a visual analysis palette is provided, your colorAnchors should reflect the same color family — but express them as natural descriptions ("warm amber", "cool slate") rather than hex codes. Use hex only when a precise match matters. Do NOT invent colors absent from the reference images.
 
 IMAGE LABEL INTEGRATION:
 When reference image labels are provided, they define the ROLE each image plays:
@@ -306,7 +306,7 @@ Return ONLY valid JSON:
     }
   ],
   "colorGrade": "single sentence — the exact color grade",
-  "colorAnchors": ["#color1", "#color2", "#color3", "...up to 5"],
+  "colorAnchors": ["warm amber", "deep slate blue", "#2C3E50 (only if precise match needed)", "...up to 5"],
   "lightSource": "global light source described through visible effect",
   "materials": "dominant materials and textures",
   "mood": "emotional baseline — the register the set never drops below",
@@ -366,8 +366,8 @@ export function buildBriefUserMessage(
     lines.push('The images are AUTHORITATIVE for visual details. If images show specific elements (objects, materials, spatial relationships, atmosphere), those MUST appear in the brief even when text also describes them.')
     lines.push('')
     lines.push(visualStyleCues.description)
-    lines.push(`\nExtracted Palette: ${visualStyleCues.hexPalette.join(', ')}`)
-    lines.push('IMPORTANT: Your colorAnchors MUST be selected from or closely matched to this extracted palette. Do NOT invent colors not present in the reference images.')
+    lines.push(`\nReference Palette: ${visualStyleCues.hexPalette.join(', ')}`)
+    lines.push('Your colorAnchors should reflect these colors using natural descriptions ("warm amber", "cool slate"). Use hex only when precise matching matters. Do NOT invent colors absent from the reference images.')
     if (visualStyleCues.cinematicKeywords?.length > 0) {
       lines.push(`Cinematic Keywords: ${visualStyleCues.cinematicKeywords.join(' | ')}`)
     }
@@ -412,7 +412,7 @@ export function buildBriefUserMessage(
   lines.push('MANDATORY CONSTRAINTS — CHECK BEFORE OUTPUTTING:')
   lines.push('1. Preserve every specific detail from the user\'s direction VERBATIM. If they mention specific materials, elements, constraints, or atmosphere, those must appear in the relevant brief fields using the user\'s own language — do not generalize or abstract.')
   if (hasImages) {
-    lines.push(`2. colorAnchors must be selected from the extracted palette: ${visualStyleCues!.hexPalette.join(', ')}`)
+    lines.push(`2. colorAnchors should reflect the reference palette (${visualStyleCues!.hexPalette.join(', ')}) using natural color descriptions.`)
     lines.push('3. creativeVision must articulate what the reference images already communicate — not invent something unrelated.')
   }
   lines.push('Return ONLY valid JSON. No markdown wrapping, no explanation.')
@@ -456,8 +456,8 @@ Then: one atmospheric detail (surface condition, air quality, ground plane).
 Example: "Sharp foreground gravel, helicopter motion-blurred in the midground, tree line dissolving soft behind. Cold overcast light — bluish and flat, minimal contrast, deep shadow pooling under the fuselage. Wet tarmac catching diffuse sky."
 
 ELEMENT 5 — STYLE & AMBIANCE  (~15-22 words)
-Color grade sentence VERBATIM from the brief. Hex anchors bound to specific surfaces. One organic texture cue.
-Example: "[verbatim color grade]. The uniform reads #4A5240, the tarmac #6B6B6B. Film grain, slight halation on the helicopter metal."
+Color grade sentence VERBATIM from the brief. Color references using natural descriptions (hex only when precise match is critical). One organic texture cue.
+Example: "[verbatim color grade]. The uniform in muted olive, tarmac in flat grey. Film grain, slight halation on the helicopter metal."
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 RULES:
@@ -465,7 +465,7 @@ RULES:
 - No abstract emotional language ("dramatic", "powerful", "tense") — express mood through framing and light
 - No equipment names, cinematographer names, director names, film titles
 - Color grade VERBATIM — do not paraphrase it
-- Hex anchors bound to NAMED surfaces ("the wall is #2C3E50" not just "#2C3E50")
+- Color references on named surfaces using natural descriptions ("deep slate blue wall"). Use hex only when precise color match is critical.
 - Each frame compositionally distinct from every other
 
 ${targetModel === 'flux-2-klein-9b' ? NATURALISM_VOCABULARY + '\n\n' + QWEN_ENCODER_RULES : ''}
@@ -476,7 +476,7 @@ VALIDATION:
 - Element 2: physical subject description + spatial anchor?
 - Element 3: concrete action or pose?
 - Element 4: all three depth planes named with optical treatment? Light described through effect?
-- Element 5: color grade verbatim? Hex anchors on named surfaces? Organic texture cue?
+- Element 5: color grade verbatim? Color references on named surfaces? Organic texture cue?
 - Total up to ${profile.optimalLengthMax} words?
 
 OUTPUT: Return ONLY valid JSON:
@@ -705,7 +705,7 @@ export function buildUserMessage(
     lines.push('')
     lines.push('=== GLOBAL VISUAL IDENTITY (shared across all frames) ===')
     lines.push(`COLOR GRADE (copy VERBATIM): ${creativeBrief.colorGrade}`)
-    lines.push(`COLOR ANCHORS (bound to surfaces): ${creativeBrief.colorAnchors.join(', ')}`)
+    lines.push(`COLOR REFERENCE (advisory, not binding): ${creativeBrief.colorAnchors.join(', ')}`)
     lines.push(`LIGHT SOURCE: ${creativeBrief.lightSource}`)
     lines.push(`MATERIALS: ${creativeBrief.materials}`)
     lines.push(`MOOD (baseline): ${creativeBrief.mood}`)
@@ -727,8 +727,8 @@ export function buildUserMessage(
       lines.push('=== VISUAL GROUND TRUTH (from reference images — AUTHORITATIVE for color, texture, atmosphere) ===')
       lines.push('When writing color grades, light descriptions, and surface textures, match THIS description — not the brief\'s abstractions.')
       lines.push(visualStyleCues.description)
-      lines.push(`Authoritative Palette: ${visualStyleCues.hexPalette.join(', ')}`)
-      lines.push('Use these hex values on named surfaces. Prefer these over the brief\'s colorAnchors if they differ.')
+      lines.push(`Reference Palette: ${visualStyleCues.hexPalette.join(', ')}`)
+      lines.push('These colors represent the reference images. Use as guidance — natural color descriptions are preferred over hex codes in prompts.')
       if (visualStyleCues.cinematicKeywords?.length > 0) {
         lines.push(`Visual qualities (integrate into prompts): ${visualStyleCues.cinematicKeywords.join(' | ')}`)
       }
@@ -744,7 +744,7 @@ export function buildUserMessage(
     lines.push('2. Element 2 (Subject): physical description bound to a spatial anchor.')
     lines.push('3. Element 3 (Action): concrete pose, gesture, or energy state — no abstract emotions.')
     lines.push('4. Element 4 (Context & Environment): 3 depth planes with optical treatment + light through visible effect + atmospheric detail.')
-    lines.push('5. Element 5 (Style & Ambiance): color grade VERBATIM + hex anchors on named surfaces + organic texture cue.')
+    lines.push('5. Element 5 (Style & Ambiance): color grade VERBATIM + color references on named surfaces (natural descriptions preferred, hex only when critical) + organic texture cue.')
     lines.push('6. NEVER name equipment, cinematographers, directors, or film titles.')
     lines.push('7. Each frame compositionally DISTINCT from every other.')
     lines.push('8. The creative vision and emotional intent inform what to emphasize — not how to write it.')
@@ -849,7 +849,8 @@ export function buildUserMessage(
     if (visualStyleCues) {
       lines.push('\n=== VISUAL GROUND TRUTH (AUTHORITATIVE for color, texture, atmosphere) ===')
       lines.push(visualStyleCues.description)
-      lines.push(`Authoritative Palette: ${visualStyleCues.hexPalette.join(', ')}`)
+      lines.push(`Reference Palette: ${visualStyleCues.hexPalette.join(', ')}`)
+      lines.push('Use as color guidance — natural descriptions preferred over hex codes.')
       if (visualStyleCues.cinematicKeywords?.length > 0) {
         lines.push(`Visual qualities: ${visualStyleCues.cinematicKeywords.join(' | ')}`)
       }
@@ -872,7 +873,8 @@ export function buildUserMessage(
   if (visualStyleCues) {
     lines.push('\n=== VISUAL REFERENCE ===')
     lines.push(visualStyleCues.description)
-    lines.push(`\nColor Palette: ${visualStyleCues.hexPalette.join(', ')}`)
+    lines.push(`\nReference Palette: ${visualStyleCues.hexPalette.join(', ')}`)
+    lines.push('Use as color guidance — natural descriptions preferred over hex codes.')
     if (visualStyleCues.cinematicKeywords?.length > 0) {
       lines.push(`Cinematic Keywords: ${visualStyleCues.cinematicKeywords.join(' | ')}`)
     }
@@ -964,7 +966,8 @@ export function buildRevisionUserMessage(
     lines.push('')
     lines.push('=== VISUAL REFERENCE ===')
     lines.push(visualStyleCues.description)
-    lines.push(`Color Palette: ${visualStyleCues.hexPalette.join(', ')}`)
+    lines.push(`Reference Palette: ${visualStyleCues.hexPalette.join(', ')}`)
+    lines.push('Use as color guidance — natural descriptions preferred over hex codes.')
     if (visualStyleCues.cinematicKeywords?.length) {
       lines.push(`Keywords: ${visualStyleCues.cinematicKeywords.join(' | ')}`)
     }
@@ -992,9 +995,11 @@ ${profile.editRules && mode === 'edit' ? profile.editRules + '\n' : ''}YOUR ROLE
 
 FIDELITY RULE:
 Never change lighting, materials, color, or mood that the user already specified. Only enhance elements that are vague or missing. If the user wrote "warm amber side light", keep it exactly. If they wrote "nice lighting", that's vague — enhance it.
+Use concise preservation phrases ("keep existing lighting") rather than re-describing unchanged elements. The shorter the preservation context, the better — it saves tokens and avoids confusing the model about what should actually change.
 
 LENGTH RULE:
 Output should be as long as needed, up to ${profile.optimalLengthMax} words. A specific 20-word input may only need 30 words enhanced. Don't pad to fill a word count.
+${mode === 'edit' ? 'For edits to a single element, the total prompt should rarely exceed 40-60 words. A 15-word edit instruction + a 10-word preservation phrase is ideal.' : ''}
 
 ENHANCEMENT APPROACH:
 - Replace vague language with specific, descriptive language (what the camera sees, how surfaces respond to light)
@@ -1019,6 +1024,13 @@ EDIT-SPECIFIC RULES:
 - If the user's prompt already references images, keep those references intact and enhance the surrounding description.
 - If the user's prompt does NOT reference images but image labels are provided, ADD explicit image references based on the labels.
 - The output prompt must describe the DESIRED RESULT, not the transformation steps.
+
+PRESERVATION SHORTHAND:
+When the edit targets a specific element, do NOT re-describe the entire scene. Instead use concise preservation language:
+- "Keep the environment and all surrounding elements as they are"
+- "Preserve existing lighting and atmosphere"
+- "Maintain the current color palette and mood"
+Only describe what CHANGES in detail. Everything else gets a single preservation sentence. Do NOT add hex colors, color grades, or atmospheric descriptions to edit prompts unless the user explicitly asked for a color/mood change.
 ` : ''}
 OUTPUT: Return ONLY valid JSON: { "prompt": "the enhanced prompt" }`
 }
@@ -1052,8 +1064,8 @@ export function buildEnhanceUserMessage(
     lines.push('\n=== VISUAL GROUND TRUTH (from reference images — AUTHORITATIVE for color, texture, atmosphere) ===')
     lines.push('The enhanced prompt must match this visual reality. Use these specific colors, textures, and atmospheric qualities.')
     lines.push(visualStyleCues.description)
-    lines.push(`Authoritative Palette: ${visualStyleCues.hexPalette.join(', ')}`)
-    lines.push('Bind these hex values to named surfaces in the enhanced prompt.')
+    lines.push(`Reference Palette: ${visualStyleCues.hexPalette.join(', ')}`)
+    lines.push('Use as color reference — natural descriptions preferred over hex codes in the enhanced prompt.')
     if (visualStyleCues.cinematicKeywords?.length > 0) {
       lines.push(`Visual qualities to integrate: ${visualStyleCues.cinematicKeywords.join(' | ')}`)
     }

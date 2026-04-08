@@ -108,7 +108,7 @@ How light behaves in the scene — described through its visible effect, not equ
 The actual colors present in the images.
 - Dominant colors as they appear on specific surfaces and objects
 - Overall color character: saturated, muted, monochromatic, vivid, etc.
-- Pick 5 hex colors that best represent the actual palette — from specific surfaces you can point to
+- If the palette is distinctive, note up to 5 representative hex colors from specific surfaces. These are advisory reference points, not binding constraints. Fewer is fine if the palette is simple or monochromatic.
 
 5. MATERIALS & SURFACES
 What things are made of and how they look under the light.
@@ -132,8 +132,8 @@ Return a JSON object with exactly these four fields:
 }
 
 hexPalette rules:
-- Exactly 5 colors sampled from actual surfaces/objects visible in the images
-- Include range: at least one dark, one midtone, one light/accent
+- Up to 5 colors sampled from actual surfaces/objects visible in the images (fewer is fine — return an empty array if the palette is unremarkable)
+- If provided, include range: at least one dark, one midtone, one light/accent
 - Order: darkest → lightest
 
 cinematicKeywords rules:
