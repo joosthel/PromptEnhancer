@@ -75,7 +75,7 @@ export const MODEL_PROFILES: Record<TargetModel, ModelProfile> = {
     maxReferenceImages: 14,
     knownWeaknesses: ['physics-constraints'],
     promptRules: `NANOBANANA 2 (Gemini 3.1 Flash Image) RULES:
-- Conversational, directive tone — describe the scene as if directing a photographer
+- Conversational, directive tone — describe the scene as if directing a scene
 - Can handle any prompt length but be specific about what matters
 - Supports up to 14 reference object images
 - Character consistency for up to 5 characters
@@ -125,10 +125,10 @@ Instead, describe light through its VISIBLE EFFECT on the scene:
 - Shadow as subject: "deep shadow swallowing the background", "half the face lost in darkness"
 - Color temperature as feeling: "cold blue-grey wash", "warm amber spill", "tungsten warmth against cool daylight"
 - Atmosphere: "hazy air distorting the distance", "dust motes catching light", "rain-wet reflections on dark pavement"
-Write prompts like storyboard descriptions — what the camera SEES and what the atmosphere FEELS like.
+Write prompts like storyboard descriptions — describe the scene and what the atmosphere FEELS like.
 
 WHAT WORKS WELL:
-- Storyboard-style descriptions — what the camera sees, how the atmosphere feels
+- Storyboard-style descriptions — describe the scene, how the atmosphere feels
 - Light described through effect: "cold overcast wash with bluish flattened tone", not equipment names
 - Hex codes bound to surfaces: "the wall is #2C3E50" — Klein follows hex values extremely well
 - Material textures: "brushed aluminum", "raw silk", "cracked leather", "rain-spotted concrete"

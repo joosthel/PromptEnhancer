@@ -228,7 +228,7 @@ export async function POST(request: NextRequest) {
           max_tokens: 4096,
           stop: ['\n\n\n'],
           messages: [
-            { role: 'system', content: buildSystemPrompt(targetModel, mode) },
+            { role: 'system', content: buildSystemPrompt(targetModel, mode, creativeBrief?.medium) },
             { role: 'user', content: userMessage },
           ],
         }, TEXT_MODEL_FALLBACK)

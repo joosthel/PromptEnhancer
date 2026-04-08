@@ -42,9 +42,14 @@ export default function AnalysisPanel({ cues, defaultOpen = false }: AnalysisPan
               </span>
             </div>
           )}
-          {cues.cinematicKeywords?.length > 0 && (
+          {cues.mediumDetail && (
+            <p className="text-[11px] text-neutral-500 font-mono pt-3 border-l-2 border-neutral-300 pl-2">
+              {cues.mediumDetail}
+            </p>
+          )}
+          {cues.visualKeywords?.length > 0 && (
             <div className="flex flex-wrap gap-1.5">
-              {cues.cinematicKeywords.map((kw, i) => (
+              {cues.visualKeywords.map((kw, i) => (
                 <span
                   key={i}
                   className="text-xs px-2 py-0.5 bg-neutral-100 text-neutral-500 rounded-sm font-mono"

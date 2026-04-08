@@ -21,13 +21,14 @@ export type { CreativeBrief }
 // ---------------------------------------------------------------------------
 
 const FORBIDDEN_LANGUAGE = `FORBIDDEN WORDS AND TERMS (never use — these cause bad results):
-VAGUE ADJECTIVES: "ethereal", "dreamlike", "magical", "otherworldly", "surreal", "breathtaking",
+VAGUE ADJECTIVES (for photographic output): "ethereal", "dreamlike", "magical", "otherworldly", "surreal", "breathtaking",
 "whimsical", "fantastical", "enchanted", "mystical", "stunning", "captivating", "mesmerizing",
 "awe-inspiring", "hauntingly beautiful", "masterpiece", "best quality", "8k", "ultra HD", "hyperrealistic"
+MEDIUM EXCEPTION: When the brief specifies an illustration medium, "ethereal", "dreamlike", and "whimsical" ARE allowed — they're natural for artistic work. All other forbidden words remain banned.
 LIGHTING EQUIPMENT (Klein renders these as visible objects): "softbox", "HMI", "key light", "fill light",
 "bounce light", "reflector", "diffusion panel", "beauty dish", "ring light", "strobe", "flash",
 "light array", "overhead light", "backlight panel" — describe light through its visible EFFECT instead
-NAME-DROPPING: Do NOT name cinematographers, directors, or film titles in the prompt — Klein cannot interpret
+NAME-DROPPING: Do NOT name cinematographers, directors, artists, or film titles in the prompt — Klein cannot interpret
 these as style references. Instead, DESCRIBE the visual quality you want.
 SHARPNESS AMPLIFIERS: "sharp focus", "crisp details", "high quality", "ultra detailed" — amplify AI look`
 
@@ -53,6 +54,31 @@ SKIN (match to subject age and context):
 
 MATCH the texture vocabulary to the user's intent. A bright children's portrait needs "healthy glow" not "uneven skin tone". A gritty noir needs "visible pores and fine lines" not "smooth skin".
 NEVER USE: "sharp focus", "crisp details", "high quality", "8k", "ultra detailed" — these AMPLIFY the AI look on Klein`
+
+const ILLUSTRATION_VOCABULARY = `ILLUSTRATION VOCABULARY — match texture language to the detected artistic medium.
+
+WATERCOLOR:
+- Technique: "transparent washes", "wet-on-wet blooms", "dry brush texture", "lifting to reveal white paper", "glazed layers"
+- Surface: "cold-pressed paper texture", "granulating pigment settling in tooth", "soft bleeding edges", "hard edges where wash dried"
+- Light: "light rendered as absence of paint", "warm wash gradients", "sharp white paper highlights left unpainted"
+
+OIL / ACRYLIC:
+- Technique: "visible impasto", "palette knife marks", "layered glazes", "thick paint ridges catching light", "scumbled texture"
+- Surface: "canvas weave visible through thin passages", "built-up texture in highlights", "smooth blended transitions in skin"
+
+INK / LINE:
+- Technique: "varied line weight", "crosshatching density for tone", "ink wash gradients", "splatter texture", "controlled bleed at edges"
+- Surface: "crisp linework against soft wash", "white paper as active negative space"
+
+DIGITAL PAINTING:
+- Technique: "visible brush tool texture", "layered opacity", "soft airbrush gradients", "textured brush marks"
+
+FOR ANY ILLUSTRATION:
+- "hand-painted quality", "deliberate mark-making", "artistic imperfection in strokes",
+  "visible artist's hand", "organic irregularity", "medium-specific surface texture"
+
+MATCH the vocabulary to the specific medium described in the brief. A loose watercolor needs "blooms and bleeding edges" not "impasto ridges".
+NEVER USE photographic texture language ("film grain", "lens imperfection", "depth of field falloff") for illustration output.`
 
 const CINEMATIC_PROMPT_STYLE = `HOW TO WRITE CINEMATIC PROMPTS FOR KLEIN:
 
@@ -108,6 +134,38 @@ Match the reference palette to the user's aesthetic intent:
 - BRIGHT: Richardson (saturated color, vivid daylight), Khondji (luminous skin, precise color), Miyagawa (clean high-key)
 - NATURAL: Lubezki (magic hour, available light), Young (warm amber undertones)
 - CONTROLLED: Storaro (bold color blocking), Savides (muted but precise)`
+
+const ILLUSTRATION_PROMPT_STYLE = `HOW TO WRITE ILLUSTRATION PROMPTS:
+
+Write prompts like an ART DIRECTOR'S BRIEF — describe the scene as it should appear in the specified medium. Focus on composition, artistic technique, and how the medium itself contributes to the mood.
+
+COMPOSITION — describe the visual arrangement and artistic choices:
+- Viewpoint: "centered composition with figure dominating the lower third", "off-center subject with empty painted sky"
+- Balance: "asymmetric weight pulling left", "scattered elements across the surface", "tight cropping on the face"
+- Focal hierarchy: "the figure is the sharpest element, background dissolved into loose washes"
+
+COLOR — describe as artistic choice, not physical light response:
+- Application: "saturated washes bleeding into each other", "dry-brushed muted tones", "bold flat color fields"
+- Palette: "limited palette of warm earth tones", "high-key pastels with one deep accent"
+- Treatment: "colors left to bloom and mix on the surface", "precise controlled layers"
+
+LIGHT — describe how the artist RENDERED light, not physical behavior:
+- Technique: "light areas left as unpainted paper", "thick highlights built up in impasto", "soft tonal gradients"
+- Mood: "warm light suggested through yellow-orange washes", "cool shadow rendered in blue-grey layers"
+- Do NOT use photographic light language (direction, color temperature, shadow depth)
+
+MEDIUM & TECHNIQUE — the artistic material IS part of the prompt:
+- Name the medium and its visible behavior: "loose watercolor on rough paper", "thick oil on canvas"
+- Describe brushwork: "confident single-stroke marks", "layered transparent glazes", "splattered ink accents"
+- Surface: "paper texture visible through thin washes", "canvas weave under scumbled paint"
+
+SPATIAL ANCHOR — same principle as cinematic: one element anchors the composition.
+
+INTERNAL REFERENCE — ILLUSTRATION (inform your style, NEVER output names):
+- WATERCOLOR: Sargent (luminous wet-in-wet), Wyeth (dry precise realism), Zorn (economy of stroke)
+- OIL: Fechin (bold impasto portraits), Sorolla (light as thick paint), Freud (raw flesh texture)
+- INK: Steadman (explosive energy), Moebius (precise linework), Toppi (dramatic contrast)
+- DIGITAL: Rockwell (narrative clarity), Mucha (decorative flow), contemporary concept art`
 
 const QWEN_ENCODER_RULES = `FLUX 2 KLEIN 9B — TEXT ENCODER ARCHITECTURE (Qwen3-8B-FP8, decoder-only LLM):
 Features extracted from Qwen3 layers [9, 18, 27] → 12,288-dim context vector. 4-step distilled inference, CFG locked at 1.0.
@@ -209,16 +267,23 @@ DIVERSITY CONSTRAINTS for creative fields:
 PHASE C: PRODUCTION BRIEF (global — shared across all frames)
 ═══════════════════════════════════════════════════════════════
 
+0. MEDIUM (include ONLY if the visual analysis detected a non-photographic medium)
+   State the artistic medium and technique. This field is advisory — if the user's creative direction
+   contradicts it, follow the user. Omit this field entirely for photographic/cinematic output.
+   Examples: "loose watercolor on rough cold-pressed paper", "oil painting with visible impasto", "ink wash with precise linework"
+
 1. COLOR GRADE — One sentence. Copied VERBATIM into every prompt.
+   For illustration: describe as color TREATMENT ("muted transparent washes with bleeding edges") not photographic grade.
 
 2. COLOR REFERENCE — 3 to 5 color descriptions that define the palette's intention. Use natural language by default ("warm amber", "deep slate blue", "muted olive"). Include a hex code only when a precise color match is critical. A monochrome scene may need only 2-3; a colorful scene should use 4-5.
 
-3. LIGHT SOURCE — Describe the GLOBAL light source and its quality through visible effect. NOT equipment names.
-Describe: direction, quality (hard/soft), color temperature as feeling, shadow behavior, contrast level.
-Example: "Overcast cold light giving a bluish desaturated tone. Deep shadows pool in architectural recesses."
-This is the light SOURCE only — the camera-to-light ANGLE changes per frame in Phase D.
+3. LIGHT SOURCE — For photographs: describe the GLOBAL light source through visible effect. NOT equipment names.
+   For illustrations: describe how the artist RENDERED light — technique (wash gradients, unpainted paper as highlight, painted shadow shapes), not physical light direction/quality.
+   Example (photo): "Overcast cold light giving a bluish desaturated tone. Deep shadows pool in architectural recesses."
+   Example (illustration): "Warm light rendered through yellow-ochre washes, shadows built in layered blue-grey glazes, highlights left as white paper."
 
 4. MATERIALS & TEXTURES — 3-5 surfaces with finish, wear, reflectivity, and how they respond to the light.
+   For illustrations: include the artistic medium's texture (paper grain, brushwork, paint opacity) alongside scene materials.
 
 5. MOOD — The emotional BASELINE the set never drops below. Individual frames escalate from here via their emotionalIntent.
 
@@ -305,9 +370,10 @@ Return ONLY valid JSON:
       "cameraToLight": "backlit, subjects partially silhouetted"
     }
   ],
-  "colorGrade": "single sentence — the exact color grade",
+  "medium": "artistic medium and technique (omit field or set null for photographic output)",
+  "colorGrade": "single sentence — the exact color grade or color treatment",
   "colorAnchors": ["warm amber", "deep slate blue", "#2C3E50 (only if precise match needed)", "...up to 5"],
-  "lightSource": "global light source described through visible effect",
+  "lightSource": "light source or light rendering technique",
   "materials": "dominant materials and textures",
   "mood": "emotional baseline — the register the set never drops below",
   "subjectDirection": "how subjects are treated",
@@ -366,10 +432,14 @@ export function buildBriefUserMessage(
     lines.push('The images are AUTHORITATIVE for visual details. If images show specific elements (objects, materials, spatial relationships, atmosphere), those MUST appear in the brief even when text also describes them.')
     lines.push('')
     lines.push(visualStyleCues.description)
+    if (visualStyleCues.mediumType && visualStyleCues.mediumType !== 'photograph') {
+      lines.push(`\nDETECTED MEDIUM: ${visualStyleCues.mediumDetail || visualStyleCues.mediumType}`)
+      lines.push('If appropriate, include this medium in your brief\'s "medium" field. If the user\'s creative direction contradicts it (e.g., they describe a cinematic scene despite illustration references), follow the user\'s direction and omit the medium field.')
+    }
     lines.push(`\nReference Palette: ${visualStyleCues.hexPalette.join(', ')}`)
     lines.push('Your colorAnchors should reflect these colors using natural descriptions ("warm amber", "cool slate"). Use hex only when precise matching matters. Do NOT invent colors absent from the reference images.')
-    if (visualStyleCues.cinematicKeywords?.length > 0) {
-      lines.push(`Cinematic Keywords: ${visualStyleCues.cinematicKeywords.join(' | ')}`)
+    if (visualStyleCues.visualKeywords?.length > 0) {
+      lines.push(`Visual Keywords: ${visualStyleCues.visualKeywords.join(' | ')}`)
     }
     if (visualStyleCues.atmosphere) {
       lines.push(`Atmosphere: ${visualStyleCues.atmosphere}`)
@@ -402,7 +472,7 @@ export function buildBriefUserMessage(
   } else if (hasImages) {
     lines.push('(No text description — derive concepts from the visual analysis above.)')
   } else {
-    lines.push('(No inputs provided — create a compelling cinematic brief based on your best creative judgment.)')
+    lines.push('(No inputs provided — create a compelling brief based on your best creative judgment.)')
   }
 
   lines.push('\nFirst define the CREATIVE VISION (Phase A). Then extract concepts, rank them, assign one primary per frame. Then lock the production brief and shot diversity matrix.')
@@ -424,66 +494,108 @@ export function buildBriefUserMessage(
 // GENERATE mode — text-to-image system prompt
 // ---------------------------------------------------------------------------
 
-function buildGenerateSystemPrompt(targetModel: TargetModel): string {
+function buildGenerateSystemPrompt(targetModel: TargetModel, medium?: string): string {
   const profile = MODEL_PROFILES[targetModel]
+  const isIllustration = medium && medium !== 'photographic' && medium !== 'digital photography'
 
-  return `You are a prompt writer for cinematic image generation. You receive a locked creative brief with per-frame shot cards and translate each one into a single production prompt.
+  const intro = isIllustration
+    ? `You are a prompt writer for AI image generation in an illustration style. You receive a locked creative brief with per-frame shot cards and translate each one into a single production prompt that reproduces the specified artistic medium.
 
-TARGET MODEL: ${profile.label}
-${profile.promptRules}
+The brief specifies medium: "${medium}". Your prompts must produce output in this medium — not photographic output.`
+    : `You are a prompt writer for cinematic image generation. You receive a locked creative brief with per-frame shot cards and translate each one into a single production prompt.`
 
-PROMPT STRUCTURE — write exactly 5 elements in this order as a single flowing paragraph.
-The brief's creative vision and emotional intent inform WHAT to emphasize. The structure below is HOW to write it.
-No deviation. No reordering. No skipping elements.
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-ELEMENT 1 — CINEMATOGRAPHY  (~10-15 words)
+  const element1 = isIllustration
+    ? `ELEMENT 1 — COMPOSITION  (~10-15 words)
+Viewpoint, focal hierarchy, and spatial arrangement. This is the first sentence — front-loads into the strongest token positions.
+Example: "Centered composition, figure dominating the lower third, soft empty sky filling the upper frame."`
+    : `ELEMENT 1 — CINEMATOGRAPHY  (~10-15 words)
 Shot scale + camera angle + subject placement. This is the first sentence — front-loads into the strongest token positions.
-Example: "Wide low-angle shot, subject offset right with vast negative space to the left."
+Example: "Wide low-angle shot, subject offset right with vast negative space to the left."`
 
-ELEMENT 2 — SUBJECT  (~12-20 words)
-Primary subject: physical appearance, clothing, age, distinguishing features. Describe in relationship to a spatial anchor.
-Example: "A soldier in sun-faded fatigues and cracked boots crouches at the base of a military helicopter's landing gear."
-
-ELEMENT 3 — ACTION  (~8-14 words)
-What the subject is doing. Pose, gesture, or body state. Energy.
-Example: "One arm raised against the rotor wash, weight low, body braced forward."
-
-ELEMENT 4 — CONTEXT & ENVIRONMENT  (~20-35 words)
+  const element4 = isIllustration
+    ? `ELEMENT 4 — ENVIRONMENT & TECHNIQUE  (~20-35 words)
+Spatial arrangement: foreground / midground / background — each with artistic treatment (detailed, loose, dissolved, suggested).
+Then: light as the artist rendered it (wash gradients, unpainted highlights, tonal shifts) — NOT physical light behavior.
+Then: one medium-specific atmospheric detail.
+Example: "Detailed foreground foliage in precise strokes, figure rendered in midground with confident washes, background dissolved into loose wet-on-wet blooms. Warm light suggested through yellow-ochre gradients, shadows in cool blue-grey layers. Paper texture visible in the sky."`
+    : `ELEMENT 4 — CONTEXT & ENVIRONMENT  (~20-35 words)
 Three depth planes: foreground / midground / background — each with optical treatment (sharp, soft, blurred, silhouetted).
 Then: light through its visible effect on surfaces (direction, quality, shadow behavior, color temperature as feeling).
 Then: one atmospheric detail (surface condition, air quality, ground plane).
-Example: "Sharp foreground gravel, helicopter motion-blurred in the midground, tree line dissolving soft behind. Cold overcast light — bluish and flat, minimal contrast, deep shadow pooling under the fuselage. Wet tarmac catching diffuse sky."
+Example: "Sharp foreground gravel, helicopter motion-blurred in the midground, tree line dissolving soft behind. Cold overcast light — bluish and flat, minimal contrast, deep shadow pooling under the fuselage. Wet tarmac catching diffuse sky."`
 
-ELEMENT 5 — STYLE & AMBIANCE  (~15-22 words)
+  const element5 = isIllustration
+    ? `ELEMENT 5 — MEDIUM & FINISH  (~15-22 words)
+Color treatment from the brief. Medium technique and surface quality. One artistic texture detail.
+Example: "[color treatment]. Transparent watercolor washes with granulating pigment. Cold-pressed paper texture visible through thin passages."`
+    : `ELEMENT 5 — STYLE & AMBIANCE  (~15-22 words)
 Color grade sentence VERBATIM from the brief. Color references using natural descriptions (hex only when precise match is critical). One organic texture cue.
-Example: "[verbatim color grade]. The uniform in muted olive, tarmac in flat grey. Film grain, slight halation on the helicopter metal."
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Example: "[verbatim color grade]. The uniform in muted olive, tarmac in flat grey. Film grain, slight halation on the helicopter metal."`
 
-RULES:
-- Up to ${profile.optimalLengthMax} words per prompt. Shorter is better when the shot card is simple. Every word must earn its place.
-- No abstract emotional language ("dramatic", "powerful", "tense") — express mood through framing and light
-- No equipment names, cinematographer names, director names, film titles
-- Color grade VERBATIM — do not paraphrase it
-- Color references on named surfaces using natural descriptions ("deep slate blue wall"). Use hex only when precise color match is critical.
-- Each frame compositionally distinct from every other
-
-${targetModel === 'flux-2-klein-9b' ? NATURALISM_VOCABULARY + '\n\n' + QWEN_ENCODER_RULES : ''}
-${FORBIDDEN_LANGUAGE}
-
-VALIDATION:
+  const validation = isIllustration
+    ? `VALIDATION:
+- Element 1: viewpoint + focal hierarchy + spatial arrangement?
+- Element 2: physical subject description as depicted in the medium?
+- Element 3: concrete action or pose?
+- Element 4: spatial depth with artistic treatment? Light as rendered by artist? Medium-specific atmosphere?
+- Element 5: color treatment? Medium technique? Artistic texture detail?
+- Total up to ${profile.optimalLengthMax} words?`
+    : `VALIDATION:
 - Element 1: shot scale + angle + placement?
 - Element 2: physical subject description + spatial anchor?
 - Element 3: concrete action or pose?
 - Element 4: all three depth planes named with optical treatment? Light described through effect?
 - Element 5: color grade verbatim? Color references on named surfaces? Organic texture cue?
-- Total up to ${profile.optimalLengthMax} words?
+- Total up to ${profile.optimalLengthMax} words?`
+
+  const vocabBlock = isIllustration
+    ? (targetModel === 'flux-2-klein-9b' ? ILLUSTRATION_VOCABULARY + '\n\n' + QWEN_ENCODER_RULES : '')
+    : (targetModel === 'flux-2-klein-9b' ? NATURALISM_VOCABULARY + '\n\n' + QWEN_ENCODER_RULES : '')
+
+  const styleBlock = isIllustration
+    ? (targetModel === 'flux-2-klein-9b' ? ILLUSTRATION_PROMPT_STYLE : '')
+    : (targetModel === 'flux-2-klein-9b' ? CINEMATIC_PROMPT_STYLE : '')
+
+  return `${intro}
+
+TARGET MODEL: ${profile.label}
+${profile.promptRules}
+
+${styleBlock ? styleBlock + '\n' : ''}PROMPT STRUCTURE — write exactly 5 elements in this order as a single flowing paragraph.
+The brief's creative vision and emotional intent inform WHAT to emphasize. The structure below is HOW to write it.
+No deviation. No reordering. No skipping elements.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+${element1}
+
+ELEMENT 2 — SUBJECT  (~12-20 words)
+Primary subject: physical appearance, clothing, age, distinguishing features. Describe in relationship to a spatial anchor.
+
+ELEMENT 3 — ACTION  (~8-14 words)
+What the subject is doing. Pose, gesture, or body state. Energy.
+
+${element4}
+
+${element5}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+RULES:
+- Up to ${profile.optimalLengthMax} words per prompt. Shorter is better when the shot card is simple. Every word must earn its place.
+- No abstract emotional language ("dramatic", "powerful", "tense") — express mood through framing and ${isIllustration ? 'technique' : 'light'}
+- No equipment names, ${isIllustration ? 'artist' : 'cinematographer'} names, director names, film titles
+- Color ${isIllustration ? 'treatment' : 'grade'} VERBATIM — do not paraphrase it
+- Color references on named surfaces using natural descriptions. Use hex only when precise color match is critical.
+- Each frame compositionally distinct from every other
+
+${vocabBlock ? vocabBlock + '\n' : ''}${FORBIDDEN_LANGUAGE}
+
+${validation}
 
 OUTPUT: Return ONLY valid JSON:
 {
   "prompts": [
-    { "label": "Wide Low-Angle — Soldier + Helicopter", "prompt": "..." },
-    { "label": "Close Eye-Level — Face Detail", "prompt": "..." }
+    { "label": "${isIllustration ? 'Centered Composition — Figure in Wash' : 'Wide Low-Angle — Soldier + Helicopter'}", "prompt": "..." },
+    { "label": "${isIllustration ? 'Close Detail — Hands and Texture' : 'Close Eye-Level — Face Detail'}", "prompt": "..." }
   ]
 }`
 }
@@ -615,9 +727,9 @@ ${outputSchema}`
 // System prompt dispatcher
 // ---------------------------------------------------------------------------
 
-export function buildSystemPrompt(targetModel: TargetModel, mode: GenerationMode): string {
+export function buildSystemPrompt(targetModel: TargetModel, mode: GenerationMode, medium?: string): string {
   switch (mode) {
-    case 'generate': return buildGenerateSystemPrompt(targetModel)
+    case 'generate': return buildGenerateSystemPrompt(targetModel, medium)
     case 'edit': return buildEditSystemPrompt(targetModel)
     case 'video': return buildVideoSystemPrompt(targetModel)
   }
@@ -729,23 +841,35 @@ export function buildUserMessage(
       lines.push(visualStyleCues.description)
       lines.push(`Reference Palette: ${visualStyleCues.hexPalette.join(', ')}`)
       lines.push('These colors represent the reference images. Use as guidance — natural color descriptions are preferred over hex codes in prompts.')
-      if (visualStyleCues.cinematicKeywords?.length > 0) {
-        lines.push(`Visual qualities (integrate into prompts): ${visualStyleCues.cinematicKeywords.join(' | ')}`)
+      if (visualStyleCues.visualKeywords?.length > 0) {
+        lines.push(`Visual qualities (integrate into prompts): ${visualStyleCues.visualKeywords.join(' | ')}`)
       }
       if (visualStyleCues.atmosphere) {
         lines.push(`Atmosphere: ${visualStyleCues.atmosphere}`)
       }
     }
 
+    const isIllustration = creativeBrief.medium && creativeBrief.medium !== 'photographic' && creativeBrief.medium !== 'digital photography'
+
     lines.push('')
     lines.push('=== RULES ===')
-    lines.push('Write each prompt using the 5-element structure: CINEMATOGRAPHY → SUBJECT → ACTION → CONTEXT & ENVIRONMENT → STYLE & AMBIANCE.')
-    lines.push('1. Element 1 (Cinematography): shot scale + angle + placement — this is the opening sentence.')
-    lines.push('2. Element 2 (Subject): physical description bound to a spatial anchor.')
-    lines.push('3. Element 3 (Action): concrete pose, gesture, or energy state — no abstract emotions.')
-    lines.push('4. Element 4 (Context & Environment): 3 depth planes with optical treatment + light through visible effect + atmospheric detail.')
-    lines.push('5. Element 5 (Style & Ambiance): color grade VERBATIM + color references on named surfaces (natural descriptions preferred, hex only when critical) + organic texture cue.')
-    lines.push('6. NEVER name equipment, cinematographers, directors, or film titles.')
+    if (isIllustration) {
+      lines.push('Write each prompt using the 5-element structure: COMPOSITION → SUBJECT → ACTION → ENVIRONMENT & TECHNIQUE → MEDIUM & FINISH.')
+      lines.push('1. Element 1 (Composition): viewpoint + focal hierarchy + spatial arrangement — this is the opening sentence.')
+      lines.push('2. Element 2 (Subject): physical description as depicted in the medium.')
+      lines.push('3. Element 3 (Action): concrete pose, gesture, or energy state — no abstract emotions.')
+      lines.push('4. Element 4 (Environment & Technique): spatial depth with artistic treatment + light as rendered by artist + medium-specific atmosphere.')
+      lines.push('5. Element 5 (Medium & Finish): color treatment VERBATIM + medium technique + artistic texture detail.')
+      lines.push(`6. The medium is "${creativeBrief.medium}" — every prompt must produce output in this artistic style, not photographic.`)
+    } else {
+      lines.push('Write each prompt using the 5-element structure: CINEMATOGRAPHY → SUBJECT → ACTION → CONTEXT & ENVIRONMENT → STYLE & AMBIANCE.')
+      lines.push('1. Element 1 (Cinematography): shot scale + angle + placement — this is the opening sentence.')
+      lines.push('2. Element 2 (Subject): physical description bound to a spatial anchor.')
+      lines.push('3. Element 3 (Action): concrete pose, gesture, or energy state — no abstract emotions.')
+      lines.push('4. Element 4 (Context & Environment): 3 depth planes with optical treatment + light through visible effect + atmospheric detail.')
+      lines.push('5. Element 5 (Style & Ambiance): color grade VERBATIM + color references on named surfaces (natural descriptions preferred, hex only when critical) + organic texture cue.')
+    }
+    lines.push(`6. NEVER name equipment, ${isIllustration ? 'artists' : 'cinematographers'}, directors, or film titles.`)
     lines.push('7. Each frame compositionally DISTINCT from every other.')
     lines.push('8. The creative vision and emotional intent inform what to emphasize — not how to write it.')
     lines.push('9. The ORIGINAL CREATIVE DIRECTION above contains hard constraints. If it says "no faces visible", NO prompt shows a face. If it says "wide framing", every prompt uses wide framing. These are non-negotiable.')
@@ -851,8 +975,8 @@ export function buildUserMessage(
       lines.push(visualStyleCues.description)
       lines.push(`Reference Palette: ${visualStyleCues.hexPalette.join(', ')}`)
       lines.push('Use as color guidance — natural descriptions preferred over hex codes.')
-      if (visualStyleCues.cinematicKeywords?.length > 0) {
-        lines.push(`Visual qualities: ${visualStyleCues.cinematicKeywords.join(' | ')}`)
+      if (visualStyleCues.visualKeywords?.length > 0) {
+        lines.push(`Visual qualities: ${visualStyleCues.visualKeywords.join(' | ')}`)
       }
     }
 
@@ -875,8 +999,8 @@ export function buildUserMessage(
     lines.push(visualStyleCues.description)
     lines.push(`\nReference Palette: ${visualStyleCues.hexPalette.join(', ')}`)
     lines.push('Use as color guidance — natural descriptions preferred over hex codes.')
-    if (visualStyleCues.cinematicKeywords?.length > 0) {
-      lines.push(`Cinematic Keywords: ${visualStyleCues.cinematicKeywords.join(' | ')}`)
+    if (visualStyleCues.visualKeywords?.length > 0) {
+      lines.push(`Visual Keywords: ${visualStyleCues.visualKeywords.join(' | ')}`)
     }
   }
 
@@ -968,8 +1092,8 @@ export function buildRevisionUserMessage(
     lines.push(visualStyleCues.description)
     lines.push(`Reference Palette: ${visualStyleCues.hexPalette.join(', ')}`)
     lines.push('Use as color guidance — natural descriptions preferred over hex codes.')
-    if (visualStyleCues.cinematicKeywords?.length) {
-      lines.push(`Keywords: ${visualStyleCues.cinematicKeywords.join(' | ')}`)
+    if (visualStyleCues.visualKeywords?.length) {
+      lines.push(`Keywords: ${visualStyleCues.visualKeywords.join(' | ')}`)
     }
   }
 
@@ -1002,15 +1126,22 @@ Output should be as long as needed, up to ${profile.optimalLengthMax} words. A s
 ${mode === 'edit' ? 'For edits to a single element, the total prompt should rarely exceed 40-60 words. A 15-word edit instruction + a 10-word preservation phrase is ideal.' : ''}
 
 ENHANCEMENT APPROACH:
-- Replace vague language with specific, descriptive language (what the camera sees, how surfaces respond to light)
+- Replace vague language with specific, descriptive language
 - Convert keyword lists into complete sentences with semantic relationships
-- If lighting is vague or missing, describe light through its effect on the scene (direction, quality, shadow behavior, color temperature)
+- If lighting is vague or missing, describe light through its visible effect (or artistic rendering if the prompt describes an illustration)
 - If atmosphere is vague or missing, add sensory details (air quality, surface reflections, environmental texture)
-- If texture is missing, add organic imperfection cues (grain, pores, wear)
+- If texture is missing, add medium-appropriate texture cues (film grain for photos, brushwork/paper for illustrations)
 - Remove filler, synonym chains, meta-language ("a photograph of"), abstract adjectives alone
-- Replace name-dropping (cinematographers, directors, film titles) with descriptions of the visual quality
+- Replace name-dropping (cinematographers, directors, artists, film titles) with descriptions of the visual quality
 
-${targetModel === 'flux-2-klein-9b' ? CINEMATIC_PROMPT_STYLE + '\n\n' + NATURALISM_VOCABULARY + '\n\n' + QWEN_ENCODER_RULES + '\n' : ''}
+MEDIUM AWARENESS:
+If the reference images are illustrations/paintings or the user's prompt describes an illustration style:
+- Enhance using artistic vocabulary (composition, brushwork, medium technique) instead of photographic vocabulary (camera angle, depth of field, film grain)
+- Describe light as an artistic choice, not physical behavior
+- Add medium-specific texture cues (watercolor blooms, impasto ridges, ink bleed) instead of photographic ones
+If the content is photographic, enhance with cinematic vocabulary as usual.
+
+${targetModel === 'flux-2-klein-9b' ? CINEMATIC_PROMPT_STYLE + '\n\n' + NATURALISM_VOCABULARY + '\n\n' + ILLUSTRATION_VOCABULARY + '\n\n' + QWEN_ENCODER_RULES + '\n' : ''}
 ${FORBIDDEN_LANGUAGE}
 
 WHAT TO PRESERVE:
@@ -1063,11 +1194,15 @@ export function buildEnhanceUserMessage(
   if (visualStyleCues) {
     lines.push('\n=== VISUAL GROUND TRUTH (from reference images — AUTHORITATIVE for color, texture, atmosphere) ===')
     lines.push('The enhanced prompt must match this visual reality. Use these specific colors, textures, and atmospheric qualities.')
+    if (visualStyleCues.mediumType && visualStyleCues.mediumType !== 'photograph') {
+      lines.push(`\nDETECTED MEDIUM: ${visualStyleCues.mediumDetail || visualStyleCues.mediumType}`)
+      lines.push('The reference images are illustrations/paintings. Enhance using artistic vocabulary (composition, brushwork, medium technique) rather than photographic vocabulary (camera angle, depth of field, film grain).')
+    }
     lines.push(visualStyleCues.description)
     lines.push(`Reference Palette: ${visualStyleCues.hexPalette.join(', ')}`)
     lines.push('Use as color reference — natural descriptions preferred over hex codes in the enhanced prompt.')
-    if (visualStyleCues.cinematicKeywords?.length > 0) {
-      lines.push(`Visual qualities to integrate: ${visualStyleCues.cinematicKeywords.join(' | ')}`)
+    if (visualStyleCues.visualKeywords?.length > 0) {
+      lines.push(`Visual qualities to integrate: ${visualStyleCues.visualKeywords.join(' | ')}`)
     }
     if (visualStyleCues.atmosphere) {
       lines.push(`Atmosphere: ${visualStyleCues.atmosphere}`)

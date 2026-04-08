@@ -351,9 +351,9 @@ export default function PromptList({
                   </span>
                 </div>
               )}
-              {visualStyleCues.cinematicKeywords?.length > 0 && (
+              {visualStyleCues.visualKeywords?.length > 0 && (
                 <div className="flex flex-wrap gap-1.5">
-                  {visualStyleCues.cinematicKeywords.map((kw, i) => (
+                  {visualStyleCues.visualKeywords.map((kw, i) => (
                     <span key={i} className="text-xs px-2 py-0.5 bg-neutral-100 text-neutral-500 rounded-sm font-mono">
                       {kw}
                     </span>

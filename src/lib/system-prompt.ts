@@ -20,8 +20,10 @@ export interface ImageLabel {
  */
 export interface VisualStyleCues {
   description: string
+  mediumType: 'photograph' | 'illustration' | '3d-render' | 'mixed'
+  mediumDetail: string
   hexPalette: string[]
-  cinematicKeywords: string[]
+  visualKeywords: string[]
   atmosphere: string
 }
 
@@ -65,6 +67,7 @@ export interface CreativeBrief {
   visualMotifs: string[]
   narrativeArc: string
   fullBrief: string
+  medium?: string
 }
 
 /**
@@ -82,12 +85,23 @@ ANTI-HALLUCINATION RULES (MANDATORY):
 
 DESCRIPTION STRUCTURE — analyze in this order:
 
+0. MEDIUM IDENTIFICATION (first — determines how you describe everything else)
+Identify the artistic medium of each image:
+- Is this a photograph (digital or film), a 3D render, or an illustration/painting?
+- If illustration/painting: what medium? (watercolor, oil, acrylic, ink, gouache, digital painting, pencil, mixed media)
+- What technique details are visible? (brushwork, paper texture, stroke style, paint opacity, mark-making)
+
+If the images are illustrations/paintings, adjust ALL subsequent descriptions:
+- Describe light as an ARTISTIC CHOICE (how the artist rendered light), not as physical light behavior
+- Describe depth as COMPOSITIONAL (foreground/background treatment in the medium), not as optical focus
+- Describe texture as the MEDIUM'S texture (paper grain, brush marks, paint thickness), not surface physics
+
 1. SUBJECTS & OBJECTS (most important)
 What is literally in the images? Describe every visible subject and significant object.
 - People: number, approximate age, clothing, posture, facial expression, what they're doing
 - Objects: what they are, their condition, size relative to other elements
 - Spatial relationships: who/what is where relative to what else, distances, foreground/midground/background placement
-- Composition: camera angle, framing, what's centered vs. off-center
+- Composition: viewpoint, framing, what's centered vs. off-center
 
 2. ENVIRONMENT & SPACE
 The physical setting as it literally appears.
@@ -97,12 +111,8 @@ The physical setting as it literally appears.
 - Time of day if determinable from light
 
 3. LIGHT
-How light behaves in the scene — described through its visible effect, not equipment.
-- Direction relative to subjects
-- Quality: hard/soft, even/directional
-- Shadow behavior: deep, soft, absent, hard-edged
-- Color temperature as it appears: warm, cool, neutral, mixed
-- Contrast level: flat, balanced, high-contrast
+For photographs: How light behaves in the scene — direction, quality, shadow behavior, color temperature, contrast.
+For illustrations: How the artist RENDERED light — wash gradients, white paper as highlight, painted shadow shapes, tonal transitions, contrast as artistic choice.
 
 4. COLOR
 The actual colors present in the images.
@@ -110,36 +120,46 @@ The actual colors present in the images.
 - Overall color character: saturated, muted, monochromatic, vivid, etc.
 - If the palette is distinctive, note up to 5 representative hex colors from specific surfaces. These are advisory reference points, not binding constraints. Fewer is fine if the palette is simple or monochromatic.
 
-5. MATERIALS & SURFACES
-What things are made of and how they look under the light.
-- Dominant materials and their condition (worn, pristine, wet, dusty)
-- Surface qualities: matte, glossy, rough, smooth, translucent
+5. MATERIALS, SURFACES & TECHNIQUE
+For photographs: What things are made of and how they look under the light (worn, pristine, matte, glossy).
+For illustrations: The artistic medium's visible qualities — paper texture, brushwork, paint opacity, stroke character, mark-making technique, medium-specific effects (watercolor blooms, impasto ridges, ink bleed, etc.).
 
 6. ATMOSPHERE
-The overall feel of the scene derived from VISIBLE elements — not invented narrative.
-- Based on: lighting quality, space (open/confined), weather, time of day, surface conditions
+The overall feel derived from VISIBLE elements — not invented narrative.
 - One sentence describing the atmosphere as a viewer would experience it
-- Examples: "bright, open gallery space with clean daylight" or "dim, humid industrial interior"
 
 Write a ~400-word description. Be CONCRETE and SPECIFIC throughout. "A man in a dark blue suit standing near a white wall" beats "a figure in an elegant space." The downstream pipeline depends on literal accuracy.
 
-Return a JSON object with exactly these four fields:
+Return a JSON object with exactly these fields:
 {
   "description": "your ~400-word literal description of what the images show",
-  "hexPalette": ["#XXXXXX", "#XXXXXX", "#XXXXXX", "#XXXXXX", "#XXXXXX"],
-  "cinematicKeywords": ["keyword phrase 1", "keyword phrase 2", ...],
+  "mediumType": "photograph | illustration | 3d-render | mixed",
+  "mediumDetail": "specific medium and technique — e.g. 'loose watercolor on rough paper with wet-on-wet blooms' or 'digital photography with natural grade'",
+  "hexPalette": ["#XXXXXX", ...],
+  "visualKeywords": ["keyword phrase 1", "keyword phrase 2", ...],
   "atmosphere": "one sentence — the overall feel derived from visible elements"
 }
+
+mediumType rules:
+- "photograph" for photos (digital or film) and photorealistic renders
+- "illustration" for paintings, drawings, watercolors, ink work, digital painting, any hand-made or painterly art
+- "3d-render" for clearly CGI/3D rendered scenes that aren't photorealistic
+- "mixed" if the set contains both photographs and illustrations
+
+mediumDetail rules:
+- Be specific about the technique: "loose watercolor with visible paper texture and wet-on-wet blooms" not just "watercolor"
+- For photographs: note the quality/style: "digital photography, natural color" or "film photography, warm analog tones"
 
 hexPalette rules:
 - Up to 5 colors sampled from actual surfaces/objects visible in the images (fewer is fine — return an empty array if the palette is unremarkable)
 - If provided, include range: at least one dark, one midtone, one light/accent
 - Order: darkest → lightest
 
-cinematicKeywords rules:
+visualKeywords rules:
 - 6 to 10 items
 - Each is 2–6 words describing a visible compositional or atmospheric quality
-- Examples: "low-angle ground perspective", "wide negative space left", "flat overcast daylight", "shallow depth of field"
+- For photographs: "low-angle ground perspective", "wide negative space left", "shallow depth of field"
+- For illustrations: "visible brushstrokes", "paper texture bleeding through", "soft wet-on-wet edges", "hand-painted light gradients"
 - Describe what you SEE, not what you interpret
 
 Return ONLY valid JSON, nothing else.`

@@ -13,8 +13,10 @@ import { z } from 'zod'
 export const VisualStyleCuesSchema = z.object({
   description: z.string().min(1),
   hexPalette: z.array(z.string()).min(1),
-  cinematicKeywords: z.array(z.string()).default([]),
+  visualKeywords: z.array(z.string()).default([]),
   atmosphere: z.string().default(''),
+  mediumType: z.enum(['photograph', 'illustration', '3d-render', 'mixed']).default('photograph'),
+  mediumDetail: z.string().default(''),
 })
 
 // ---------------------------------------------------------------------------
