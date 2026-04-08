@@ -35,16 +35,12 @@ export interface ConceptAssignment {
   concept: string
   role: 'primary' | 'supporting' | 'atmosphere'
   frame: number
-  fiveWordPitch: string
+  emotionalIntent: string
   shotScale: string
   cameraAngle: string
   subjectPlacement: string
   depthPlanes: string
-  energyState: string
-  cameraToLight: string
-  emotionalIntent: string
-  framePriority: string
-  sensoryHook: string
+  cameraEquipment?: string
 }
 
 /**
@@ -52,9 +48,10 @@ export interface ConceptAssignment {
  * Every prompt is derived strictly from this document — zero creative drift.
  */
 export interface CreativeBrief {
+  intent: string
+  technicalApproach: string
   creativeVision: string
   visualMetaphor: string
-  unexpectedElement: string
   dominantCreativePriority: string
   concepts: ConceptAssignment[]
   colorGrade: string
@@ -74,92 +71,61 @@ export interface CreativeBrief {
  * System prompt for the vision analysis step.
  * Primary goal: describe reference images LITERALLY, then extract production cues.
  */
-export const GEMINI_VISION_PROMPT = `You are describing reference images for a production pipeline. Your description will be used downstream to write prompts for AI image generation. Accuracy is critical — the pipeline trusts your description completely.
+export const GEMINI_VISION_PROMPT = `You are extracting CREATIVE INTENT from reference images for an AI image/video generation pipeline. Your analysis tells the downstream prompt writer what KIND of image to create and what TECHNICAL CHOICES to make — not an inventory of visible objects.
 
-ANTI-HALLUCINATION RULES (MANDATORY):
-- Describe what you LITERALLY SEE. A person is a person. A chair is a chair. An object is an object.
-- NEVER reinterpret, symbolize, or assign artistic meaning. If you see two men in a gallery, say "two men standing in a gallery" — NOT "two statues" or "two figures frozen in contemplation."
-- NEVER infer what something "represents." Describe what it IS.
-- If you're uncertain what something is, say so: "what appears to be..." — don't guess with confidence.
-- Describe age, clothing, posture, and spatial relationships as they literally appear.
+ACCURACY RULES:
+- Identify what things ARE (a person is a person, not a "figure" or "form"). If uncertain, say "what appears to be..."
+- Never symbolize or assign artistic meaning. Describe literally, then extract the creative decisions.
 
-DESCRIPTION STRUCTURE — analyze in this order:
+Analyze in this order:
 
-0. MEDIUM IDENTIFICATION (first — determines how you describe everything else)
-Identify the artistic medium of each image:
-- Is this a photograph (digital or film), a 3D render, or an illustration/painting?
-- If illustration/painting: what medium? (watercolor, oil, acrylic, ink, gouache, digital painting, pencil, mixed media)
-- What technique details are visible? (brushwork, paper texture, stroke style, paint opacity, mark-making)
+1. MEDIUM IDENTIFICATION
+- Photograph (digital/film), illustration/painting (which medium?), 3D render, or mixed?
+- For illustrations: what technique? (watercolor, oil, ink, digital painting, etc.)
 
-If the images are illustrations/paintings, adjust ALL subsequent descriptions:
-- Describe light as an ARTISTIC CHOICE (how the artist rendered light), not as physical light behavior
-- Describe depth as COMPOSITIONAL (foreground/background treatment in the medium), not as optical focus
-- Describe texture as the MEDIUM'S texture (paper grain, brush marks, paint thickness), not surface physics
+2. IMAGE TYPE & GENRE (most important)
+What kind of image is this? Name the genre and creative intent:
+- "editorial portrait for jewelry campaign", "cinematic still from a thriller", "product hero shot", "lifestyle brand photography", "fine art landscape", "fashion editorial", "documentary street photography", etc.
+- What aesthetic is it targeting? What would you call this if briefing a photographer or art director?
 
-1. SUBJECTS & OBJECTS (most important)
-What is literally in the images? Describe every visible subject and significant object.
-- People: number, approximate age, clothing, posture, facial expression, what they're doing
-- Objects: what they are, their condition, size relative to other elements
-- Spatial relationships: who/what is where relative to what else, distances, foreground/midground/background placement
-- Composition: viewpoint, framing, what's centered vs. off-center
+3. TECHNICAL SETUP
+- What focal length does the perspective imply? (wide-angle distortion, normal perspective, telephoto compression)
+- What is the PHYSICAL light source? Name it: "large window from camera-left", "overhead fluorescent", "golden hour backlight", "on-camera flash", "north-facing skylight". NOT adjectives like "soft" or "warm" alone.
+- Color temperature: warm/cool/neutral and approximate Kelvin if determinable
+- Depth of field: shallow isolation, deep focus, or moderate?
+- For illustrations: how did the artist RENDER light? (wash gradients, unpainted paper highlights, painted shadow shapes)
 
-2. ENVIRONMENT & SPACE
-The physical setting as it literally appears.
-- Indoor/outdoor, type of space (gallery, street, studio, forest, etc.)
-- Architecture, walls, floors, ceilings — materials and condition
-- Depth: how deep the space is, what's visible at different distances
-- Time of day if determinable from light
+4. KEY CREATIVE DECISIONS
+The 3-5 choices that make these images WORK — not an object inventory, but the decisions a photographer/art director made that distinguish this from a generic version of the same subject:
+- Composition strategy (why is the subject placed HERE and not there?)
+- Color palette intention (what is the palette DOING emotionally?)
+- Subject-to-environment relationship (dominant subject? environmental portrait? subject lost in space?)
+- Any deliberate tension or contrast (warm/cool, sharp/soft, large/small, static/dynamic)
 
-3. LIGHT
-For photographs: How light behaves in the scene — direction, quality, shadow behavior, color temperature, contrast.
-For illustrations: How the artist RENDERED light — wash gradients, white paper as highlight, painted shadow shapes, tonal transitions, contrast as artistic choice.
+5. PRODUCTION NOTES
+Anything the downstream prompt writer needs to reproduce this look:
+- Notable materials or textures worth preserving
+- Specific color relationships between surfaces
+- Key atmosphere details (haze, rain, dust, clarity)
 
-4. COLOR
-The actual colors present in the images.
-- Dominant colors as they appear on specific surfaces and objects
-- Overall color character: saturated, muted, monochromatic, vivid, etc.
-- If the palette is distinctive, note up to 5 representative hex colors from specific surfaces. These are advisory reference points, not binding constraints. Fewer is fine if the palette is simple or monochromatic.
-
-5. MATERIALS, SURFACES & TECHNIQUE
-For photographs: What things are made of and how they look under the light (worn, pristine, matte, glossy).
-For illustrations: The artistic medium's visible qualities — paper texture, brushwork, paint opacity, stroke character, mark-making technique, medium-specific effects (watercolor blooms, impasto ridges, ink bleed, etc.).
-
-6. ATMOSPHERE
-The overall feel derived from VISIBLE elements — not invented narrative.
-- One sentence describing the atmosphere as a viewer would experience it
-
-Write a ~400-word description. Be CONCRETE and SPECIFIC throughout. "A man in a dark blue suit standing near a white wall" beats "a figure in an elegant space." The downstream pipeline depends on literal accuracy.
+Write ~150-200 words total. Focus on CREATIVE DECISIONS, not element catalogues. "Editorial jewelry portrait, 85mm compression, single window source from camera-left, shallow depth isolating subject against clean neutral backdrop" beats "a woman with blonde hair wearing earrings and a necklace resting her chin on her hand."
 
 Return a JSON object with exactly these fields:
 {
-  "description": "your ~400-word literal description of what the images show",
+  "description": "your ~150-200 word creative intent analysis",
   "mediumType": "photograph | illustration | 3d-render | mixed",
-  "mediumDetail": "specific medium and technique — e.g. 'loose watercolor on rough paper with wet-on-wet blooms' or 'digital photography with natural grade'",
+  "mediumDetail": "specific medium and technique — e.g. 'loose watercolor on rough paper with wet-on-wet blooms' or 'digital photography, natural color grade'",
   "hexPalette": ["#XXXXXX", ...],
   "visualKeywords": ["keyword phrase 1", "keyword phrase 2", ...],
   "atmosphere": "one sentence — the overall feel derived from visible elements"
 }
 
-mediumType rules:
-- "photograph" for photos (digital or film) and photorealistic renders
-- "illustration" for paintings, drawings, watercolors, ink work, digital painting, any hand-made or painterly art
-- "3d-render" for clearly CGI/3D rendered scenes that aren't photorealistic
-- "mixed" if the set contains both photographs and illustrations
+mediumType: "photograph" for photos/photorealistic renders, "illustration" for paintings/drawings/digital painting, "3d-render" for CGI, "mixed" for both.
 
-mediumDetail rules:
-- Be specific about the technique: "loose watercolor with visible paper texture and wet-on-wet blooms" not just "watercolor"
-- For photographs: note the quality/style: "digital photography, natural color" or "film photography, warm analog tones"
+hexPalette: Up to 5 colors from actual surfaces. Include range (dark, midtone, light/accent). Darkest → lightest. Empty array if unremarkable.
 
-hexPalette rules:
-- Up to 5 colors sampled from actual surfaces/objects visible in the images (fewer is fine — return an empty array if the palette is unremarkable)
-- If provided, include range: at least one dark, one midtone, one light/accent
-- Order: darkest → lightest
-
-visualKeywords rules:
-- 6 to 10 items
-- Each is 2–6 words describing a visible compositional or atmospheric quality
-- For photographs: "low-angle ground perspective", "wide negative space left", "shallow depth of field"
-- For illustrations: "visible brushstrokes", "paper texture bleeding through", "soft wet-on-wet edges", "hand-painted light gradients"
-- Describe what you SEE, not what you interpret
+visualKeywords: 6-10 items, 2-6 words each. Focus on CREATIVE INTENT and TECHNICAL QUALITIES:
+- For photos: "85mm portrait compression", "single-source window light", "editorial jewelry campaign", "shallow depth subject isolation", "warm-cool color tension"
+- For illustrations: "loose wet-on-wet technique", "limited earth-tone palette", "hand-painted light gradients", "visible paper texture"
 
 Return ONLY valid JSON, nothing else.`

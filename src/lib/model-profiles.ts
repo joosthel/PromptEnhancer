@@ -39,10 +39,11 @@ export type TargetModel =
   | 'kling-v3'
   | 'kling-o3'
   | 'ltxv-2-3'
+  | 'seedance'
 
 /** Runtime validation sets — prevents arbitrary model/mode names from reaching OpenRouter. */
 export const VALID_TARGET_MODELS = new Set<string>([
-  'nanobanana-2', 'flux-2-klein-9b', 'veo-3-1', 'kling-v3', 'kling-o3', 'ltxv-2-3',
+  'nanobanana-2', 'flux-2-klein-9b', 'veo-3-1', 'kling-v3', 'kling-o3', 'ltxv-2-3', 'seedance',
 ])
 export const VALID_GENERATION_MODES = new Set<string>(['generate', 'edit', 'video'])
 
@@ -75,13 +76,15 @@ export const MODEL_PROFILES: Record<TargetModel, ModelProfile> = {
     maxReferenceImages: 14,
     knownWeaknesses: ['physics-constraints'],
     promptRules: `NANOBANANA 2 (Gemini 3.1 Flash Image) RULES:
-- Conversational, directive tone — describe the scene as if directing a scene
-- Can handle any prompt length but be specific about what matters
-- Supports up to 14 reference object images
-- Character consistency for up to 5 characters
-- Specify technical photography details: lens type, ISO, lighting technique
-- Include era/style explicitly: "2000s aesthetic", "Kodak Portra film"
-- Deep reasoning — the model understands your prompt before generating`,
+- Conversational, directive tone — describe the scene as if directing it
+- Lead with INTENT: "Editorial portrait", "Product hero shot", "Lifestyle campaign image"
+- Camera hardware as style controller: "Canon R5, 85mm f/1.8", "Fujifilm X-T5", "Hasselblad medium format" — activates specific training patterns
+- Supports up to 14 reference object images with character consistency for 5+ characters
+- Technical photography details work well: lens type, ISO, lighting technique, film stock
+- Include era/style: "2000s aesthetic", "Kodak Portra film", "Wes Anderson palette"
+- Cinematographer and director name-dropping WORKS on this model (unlike Klein)
+- Light as physics: name the source ("north-facing window", "golden hour backlight"), describe behavior on surfaces
+- Deep reasoning — the model understands intent before generating`,
     editRules: `NANOBANANA 2 EDIT RULES:
 - Describe the desired RESULT, not the change operation
 - The model uses semantic understanding — no masks or region selection needed
@@ -102,45 +105,36 @@ export const MODEL_PROFILES: Record<TargetModel, ModelProfile> = {
     supportsNegativePrompts: false,
     maxReferenceImages: 4,
     knownWeaknesses: ['over-sharpening', 'plastic-skin', 'multi-constraint-instability', 'missing-organic-texture'],
-    promptRules: `FLUX 2 KLEIN 9B — TEXT ENCODER: Qwen3-8B-FP8 (decoder-only LLM, text-only)
-Architecture: ~1B flow DiT + 8B text encoder. Features from Qwen3 layers [9,18,27] → 12,288-dim context. 4-step distilled, CFG=1.0.
+    promptRules: `FLUX 2 KLEIN 9B — TEXT ENCODER: Qwen3-8B-FP8 (decoder-only LLM)
+Architecture: ~1B flow DiT + 8B text encoder. 4-step distilled, CFG=1.0.
 
-CRITICAL: ~77 ACTIVE TOKENS (~50-100 words). Every word must earn its place. No upsampling — Klein encodes EXACTLY what you write.
+WRITE LIKE A NOVELIST, NOT A SEARCH ENGINE. Complete sentences describing what the camera sees — not keyword lists.
+
+CRITICAL: ~77 ACTIVE TOKENS (~50-100 words). Every word earns its place. No upsampling — Klein encodes EXACTLY what you write.
 
 POSITIONAL BIAS (Qwen3 causal attention):
-- First 25%: STRONGEST → shot geometry + primary subject here
-- Middle 50%: MODERATE → environment, atmosphere, depth planes, lighting quality
+- First 25%: STRONGEST → intent + primary subject here
+- Middle 50%: MODERATE → environment, light, depth planes
 - Last 25%: WEAKEST → grade, texture cues
-OPEN every prompt with SHOT GEOMETRY in the first 6 words: angle + scale + energy.
-Example: "A wide, low-angle action shot" — this front-loads the compositional skeleton.
-Then immediately place the primary subject in relationship to a spatial anchor.
+OPEN with INTENT + SUBJECT: "Editorial portrait of a woman resting her chin on her hand" — front-loads the concept.
 
-CINEMATIC LIGHTING — THE MOST IMPORTANT RULE:
-NEVER name lighting equipment (softbox, HMI, key light, fill, bounce, reflector, diffusion panel).
-Klein renders equipment names as OBJECTS IN THE SCENE — you will get softboxes visible in the image.
-NEVER name cinematographers, directors, or film titles — Klein cannot interpret these as style references.
-Instead, describe light through its VISIBLE EFFECT on the scene:
-- Direction and behavior: "cold light cutting across from the left", "warm glow pooling on the floor"
-- Quality through effect: "overcast and flattened, giving a bluish desaturated tone", "harsh side-light carving deep shadows"
-- Shadow as subject: "deep shadow swallowing the background", "half the face lost in darkness"
-- Color temperature as feeling: "cold blue-grey wash", "warm amber spill", "tungsten warmth against cool daylight"
-- Atmosphere: "hazy air distorting the distance", "dust motes catching light", "rain-wet reflections on dark pavement"
-Write prompts like storyboard descriptions — describe the scene and what the atmosphere FEELS like.
+LIGHT AS PHYSICS — THE MOST IMPORTANT RULE:
+NEVER name equipment (softbox, HMI, key light, reflector) — Klein renders them as objects.
+NEVER name cinematographers, directors, or film titles — Klein can't interpret style references.
+Instead: name the PHYSICAL SOURCE and describe its effect:
+- "Window light from camera-left, cold blue wash across the floor"
+- "Overhead fluorescent, flat even illumination, minimal shadow"
+- "Golden hour backlight, warm amber rimming the shoulders"
 
-WHAT WORKS WELL:
-- Storyboard-style descriptions — describe the scene, how the atmosphere feels
-- Light described through effect: "cold overcast wash with bluish flattened tone", not equipment names
-- Hex codes bound to surfaces: "the wall is #2C3E50" — Klein follows hex values extremely well
-- Material textures: "brushed aluminum", "raw silk", "cracked leather", "rain-spotted concrete"
-- Emotional composition: "grounded and urgent perspective", "oppressive weight", "quiet tension"
-- Sensory atmosphere: "slightly wet or reflective ground", "hazy air", "dust-settled surfaces"
+WHAT WORKS:
+- Intent-first: "Product hero shot", "Cinematic noir still" — sets the creative frame
+- Physical light sources with visible effect on surfaces
+- Material textures: "brushed aluminum", "cracked leather", "rain-spotted concrete"
+- Hex codes on surfaces: "the wall is #2C3E50" — Klein follows hex values well
+- One texture cue per prompt: "film grain", "visible pores", "subtle halation"
 
-ANTI-AI MEASURES (include in EVERY prompt):
-Klein's 1B flow model over-sharpens and smooths. Counteract with:
-- Organic texture: "visible pores", "film grain", "subtle halation on highlights"
-- Environmental wear: "scuffed surfaces", "dust-settled", "sun-faded", "asymmetric composition"
-- Analog character: "analog color shift", "gentle vignetting", "slight lens imperfection"
-- AVOID: "sharp focus", "crisp details", "high quality", "8k" — amplify synthetic look
+ANTI-AI: Klein over-sharpens. Include 1 texture cue: "film grain", "slight lens imperfection", "natural skin texture"
+AVOID: "sharp focus", "crisp details", "high quality", "8k" — amplify synthetic look
 
 NO negative prompts. NO prompt weights. NO meta-language ("a photograph of").
 50-100 words for T2I. 40-80 for editing.`,
@@ -164,16 +158,21 @@ NO negative prompts. NO prompt weights. NO meta-language ("a photograph of").
     maxReferenceImages: 1,
     specialSyntax: 'dialogue-colon',
     knownWeaknesses: ['multiple-simultaneous-actions', 'physics'],
-    promptRules: `VEO 3.1 RULES:
-- Structure: Shot spec > Setting > Subject > Action > Audio/Dialogue
-- Dialogue uses COLON format: "A man says: Hello there" — NOT quotes
-- Include "(no subtitles)" when dialogue is present
-- ONE dominant action per clip — don't overload
-- Sensory language for atmosphere: textures, temperatures, sounds
-- Film stock references work: "shot on 35mm", "VHS texture"
-- Specify camera movement explicitly: dolly, tracking, crane, pan
-- Focus prompt on TEMPORAL changes — what moves, how the camera behaves, what transitions happen
-- Do NOT re-describe visual content that the reference image already provides
+    promptRules: `VEO 3.1 RULES — 7-LAYER FRAMEWORK:
+1. Camera + lens: shot scale, camera movement with timing, lens character
+2. Subject: physical description, position in frame
+3. Action + physics: ONE dominant action using physics-based verbs ("pushes", "drifts", "strikes")
+4. Setting + atmosphere: environment, time, weather, sensory texture
+5. Light source: name the PHYSICAL source ("golden hour backlight", "overhead fluorescent"), describe behavior
+6. Style/texture: "shot on 35mm", "VHS texture", film stock references work well
+7. Audio/dialogue: dialogue uses COLON format — "A man says: Hello there" (NOT quotes). Include "(no subtitles)" with dialogue.
+
+KEY RULES:
+- ONE dominant action per clip — don't overload with simultaneous movements
+- Physics-based verbs for stable motion: "pushes through", "settles into", "drifts across"
+- Material cues stabilize subjects: "wool coat", "brushed steel", "wet asphalt"
+- Focus on TEMPORAL evolution — what changes, not what's static
+- Do NOT re-describe visual content the reference image already provides
 - Duration: 4s, 6s, or 8s per generation`,
   },
   'kling-v3': {
@@ -188,15 +187,17 @@ NO negative prompts. NO prompt weights. NO meta-language ("a photograph of").
     maxReferenceImages: 1,
     specialSyntax: 'character-labels',
     knownWeaknesses: ['rapid-scene-changes'],
-    promptRules: `KLING V3 RULES:
-- Multi-shot: label each shot explicitly "Shot 1: [framing] [subject] [motion]"
+    promptRules: `KLING V3 RULES — THINK LIKE A FILM DIRECTOR:
+- Multi-shot: label each shot "Shot 1: [framing] [subject] [motion]"
 - Character labels: [Character A: Description] with persistent identifiers
 - Dialogue tags with tone: [Character A, whispering]: "line here"
-- Temporal markers: "Immediately", "Pause", "After a beat"
-- Up to 6 shots in a single generation, up to 15 seconds
-- Describe camera relationship to subject: tracking, following, freezing
-- Professional film vocabulary works well: profile shot, rack focus, push-in
-- For image-to-video: describe motion and scene evolution, not the static image content`,
+- Temporal markers for pacing: "Immediately", "Pause", "After a beat"
+- Up to 6 shots, up to 15 seconds
+- Cinematic camera terms: dolly push, whip-pan, crash zoom, rack focus, push-in
+- ALWAYS anchor hands to objects — "grips the railing", "wraps around the mug" (not floating gestures)
+- Physics-based verbs: "pushes", "pulls", "settles", "strikes" — not abstract descriptions
+- Material cues stabilize subjects: "leather jacket", "wooden table", "concrete floor"
+- For image-to-video: describe MOTION and evolution, not static content`,
   },
   'kling-o3': {
     id: 'kling-o3',
@@ -210,16 +211,17 @@ NO negative prompts. NO prompt weights. NO meta-language ("a photograph of").
     maxReferenceImages: 1,
     specialSyntax: 'character-labels',
     knownWeaknesses: ['rapid-scene-changes'],
-    promptRules: `KLING O3 (OMNI) RULES:
-- Same multi-shot structure as Kling v3 but with enhanced reasoning
-- Omni model excels at complex scene understanding and multi-character interactions
+    promptRules: `KLING O3 (OMNI) RULES — THINK LIKE A FILM DIRECTOR:
+- Same multi-shot structure as Kling v3 with enhanced reasoning for complex scenes
+- Excels at multi-character interactions and complex scene understanding
 - Character labels: [Character A: Description] with persistent identifiers
-- Dialogue tags with tone: [Character A, whispering]: "line here"
+- Dialogue tags: [Character A, whispering]: "line here"
 - Temporal markers: "Immediately", "Pause", "After a beat"
-- Up to 6 shots in a single generation
-- Describe camera relationship to subject: tracking, following, freezing
-- Professional film vocabulary: profile shot, rack focus, push-in, dutch angle
-- For image-to-video: focus on temporal changes, not static visual description`,
+- Up to 6 shots per generation
+- Cinematic camera: dolly push, whip-pan, crash zoom, rack focus, dutch angle
+- ALWAYS anchor hands to objects — prevents floating gesture artifacts
+- Physics-based verbs for motion stability: "pushes", "settles", "drifts"
+- For image-to-video: focus on temporal evolution, not static description`,
   },
   'ltxv-2-3': {
     id: 'ltxv-2-3',
@@ -237,8 +239,11 @@ Architecture: 22B DiT with gated attention text connector — prompts followed p
 API: fal-ai/ltx-2.3/text-to-video — 1080p/1440p/2160p · 6s/8s/10s · native audio generation.
 CFG: keep at 4.0 or below. Above 4.0 causes contrast burn, ringing, and flicker artifacts.
 
-PROMPT FORMAT: A single flowing paragraph in PRESENT TENSE. 4–8 sentences, matched to video duration.
-Match prompt detail to duration — underdescribed prompts for 8-10s clips cause rushed, incomplete motion.
+PROMPT FORMAT: A single flowing paragraph in PRESENT TENSE. Match prompt length to video duration:
+- 6s clips: 4-5 sentences, focused and direct
+- 8s clips: 5-7 sentences, more environmental detail
+- 10s clips: 6-8 sentences, full scene development
+Underdescribed prompts for long clips cause rushed, incomplete motion. Overdescribed short clips cause cramming.
 
 STRUCTURE ORDER:
 1. Shot establishment — camera angle, scale, framing
@@ -280,6 +285,30 @@ CAMERA MOVEMENT VOCABULARY:
 "slowly dolls in" / "pulls back to reveal" / "tracks alongside" / "crane rises above" / "static locked frame"
 "pans across" / "tilts up to reveal" / "orbits around" / "shallow depth of field push" / "wide establishing hold"
 Specify relative to subject: "as the camera rises, the subject shrinks against the horizon"`,
+  },
+  'seedance': {
+    id: 'seedance',
+    label: 'Seedance',
+    description: 'ByteDance video. Front-load subject, physics-based motion, supports negative prompts.',
+    modes: ['video'],
+    promptFormat: 'natural',
+    optimalLengthMin: 50,
+    optimalLengthMax: 300,
+    supportsNegativePrompts: true,
+    maxReferenceImages: 1,
+    knownWeaknesses: ['text-rendering', 'complex-physics', 'rapid-scene-changes'],
+    promptRules: `SEEDANCE (ByteDance) RULES:
+- 50-300 words optimal. Front-load subject and action in the first 25% of the prompt.
+- Natural language, present tense. No keyword stuffing or weight syntax.
+- Supports negative prompts — use for quality control and unwanted artifacts.
+- ONE dominant action per clip — don't overload with simultaneous movements.
+- Physics-based verbs for motion: "pushes", "pulls", "strikes", "drifts", "settles" — not abstract descriptions.
+- Camera equipment as style: "shot on 35mm Cooke anamorphic" activates specific training patterns.
+- Light as physics: name the source and direction ("golden hour backlight from behind subject"), not quality alone.
+- Explicit camera movement with timing: "slow dolly in over 4 seconds", "static locked wide shot"
+- Material cues stabilize subjects: "wool coat", "brushed aluminum", "wet asphalt" — concrete surfaces reduce morphing.
+- For image-to-video: describe TEMPORAL evolution and motion, not the static image content.
+- Duration: 4s to 8s per generation.`,
   },
 }
 

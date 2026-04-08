@@ -34,9 +34,9 @@ export default function BriefPanel({ brief, defaultOpen = false }: BriefPanelPro
                 <p className="text-[11px] text-neutral-500 leading-relaxed">{brief.visualMetaphor}</p>
               )}
               <div className="flex flex-wrap gap-1.5 pt-1">
-                {brief.unexpectedElement && (
+                {brief.intent && (
                   <span className="text-[10px] px-2 py-0.5 bg-neutral-800 text-neutral-200 rounded-sm break-words">
-                    ↯ {brief.unexpectedElement}
+                    {brief.intent}
                   </span>
                 )}
                 {brief.dominantCreativePriority && (
@@ -63,23 +63,20 @@ export default function BriefPanel({ brief, defaultOpen = false }: BriefPanelPro
                       <div className="min-w-0 space-y-0.5">
                         {primary && (
                           <>
-                            <div className="text-neutral-700 font-medium">{primary.fiveWordPitch}</div>
+                            <div className="text-neutral-700 font-medium">{primary.concept}</div>
                             <div className="text-neutral-400 text-[11px] font-mono">
-                              {[primary.shotScale, primary.cameraAngle, primary.energyState]
+                              {[primary.shotScale, primary.cameraAngle, primary.subjectPlacement]
                                 .filter(Boolean)
                                 .join(' · ')}
                             </div>
-                            {primary.subjectPlacement && (
-                              <div className="text-neutral-400 text-[11px]">{primary.subjectPlacement}</div>
-                            )}
                             {primary.emotionalIntent && (
                               <div className="text-neutral-500 text-[11px] italic">
                                 {primary.emotionalIntent}
                               </div>
                             )}
-                            {primary.sensoryHook && (
+                            {primary.cameraEquipment && (
                               <div className="text-neutral-400 text-[11px] font-mono">
-                                {primary.sensoryHook}
+                                {primary.cameraEquipment}
                               </div>
                             )}
                           </>
