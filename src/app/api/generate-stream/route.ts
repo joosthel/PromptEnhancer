@@ -14,7 +14,7 @@
  */
 
 import { NextRequest } from 'next/server'
-import { callOpenRouterWithFallback, parseJsonResponse, ContentPart, TEXT_MODEL, TEXT_MODEL_FALLBACK, VISION_MODEL, VISION_MODEL_FALLBACK } from '@/lib/openrouter'
+import { callOpenRouterWithFallback, parseJsonResponse, TEXT_MODEL, TEXT_MODEL_FALLBACK, analyzeImagesParallel, type ImagePayload } from '@/lib/openrouter'
 import { GEMINI_VISION_PROMPT, VisualStyleCues, ImageLabel, CreativeBrief } from '@/lib/system-prompt'
 import { buildSystemPrompt, buildUserMessage, BRIEF_SYSTEM_PROMPT, buildBriefUserMessage } from '@/lib/prompt-engine'
 import { TargetModel, GenerationMode, VALID_TARGET_MODELS, VALID_GENERATION_MODES } from '@/lib/model-profiles'
@@ -140,32 +140,19 @@ export async function POST(request: NextRequest) {
         send('phase', { phase: 'analyzing' })
 
         if (hasImages && !cachedVisionCues) {
-          const imageContentParts: ContentPart[] = images.map((img) => {
-            if (img.type === 'base64') {
-              return { type: 'image_url' as const, image_url: { url: `data:${img.mimeType};base64,${img.data}` } }
-            }
-            return { type: 'image_url' as const, image_url: { url: img.url } }
-          })
-
-          const visionContent: ContentPart[] = [
-            ...imageContentParts,
-            { type: 'text', text: GEMINI_VISION_PROMPT },
-          ]
-
-          const visionResponse = await callOpenRouterWithFallback({
-            model: VISION_MODEL,
+          const { cues, failCount } = await analyzeImagesParallel(
+            images as ImagePayload[],
             apiKey,
-            responseFormat: 'json_object',
-            messages: [{ role: 'user', content: visionContent }],
-            timeoutMs: 45_000,
-          }, VISION_MODEL_FALLBACK)
+            35_000,
+          )
 
-          try {
-            visualStyleCues = parseJsonResponse(visionResponse, VisualStyleCuesSchema)
+          if (cues) {
+            visualStyleCues = cues
             send('vision', visualStyleCues)
-          } catch (e) {
-            const msg = e instanceof Error ? e.message : String(e)
-            console.error('Vision parse failed:', msg)
+            if (failCount > 0) {
+              send('phase', { phase: 'briefing', warning: `${failCount} of ${images.length} images could not be analyzed.` })
+            }
+          } else {
             send('phase', { phase: 'briefing', warning: 'Vision analysis failed — continuing without style cues.' })
           }
         } else if (cachedVisionCues) {

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { callOpenRouterWithFallback, parseJsonResponse, ContentPart, TEXT_MODEL, TEXT_MODEL_FALLBACK, VISION_MODEL, VISION_MODEL_FALLBACK } from '@/lib/openrouter'
-import { VisualStyleCuesSchema, CreativeBriefSchema, PromptsResponseSchema } from '@/lib/schemas'
-import { GEMINI_VISION_PROMPT, UserInputs, VisualStyleCues, ImageLabel, CreativeBrief } from '@/lib/system-prompt'
+import { callOpenRouterWithFallback, parseJsonResponse, TEXT_MODEL, TEXT_MODEL_FALLBACK, analyzeImagesParallel, type ImagePayload } from '@/lib/openrouter'
+import { CreativeBriefSchema, PromptsResponseSchema } from '@/lib/schemas'
+import { UserInputs, VisualStyleCues, ImageLabel, CreativeBrief } from '@/lib/system-prompt'
 import { buildSystemPrompt, buildUserMessage, BRIEF_SYSTEM_PROMPT, buildBriefUserMessage } from '@/lib/prompt-engine'
 import { TargetModel, GenerationMode, VALID_TARGET_MODELS, VALID_GENERATION_MODES } from '@/lib/model-profiles'
 import { rateLimit } from '@/lib/rate-limit'
@@ -98,33 +98,12 @@ export async function POST(request: NextRequest) {
     // Step 1: Vision analysis — find connecting concepts across reference images
     // -----------------------------------------------------------------------
     if (hasImages && !cachedVisionCues) {
-      const imageContentParts: ContentPart[] = images.map((img) => {
-        if (img.type === 'base64') {
-          return {
-            type: 'image_url',
-            image_url: { url: `data:${img.mimeType};base64,${img.data}` },
-          }
-        }
-        return { type: 'image_url', image_url: { url: img.url } }
-      })
-
-      const visionContent: ContentPart[] = [
-        ...imageContentParts,
-        { type: 'text', text: GEMINI_VISION_PROMPT },
-      ]
-
-      const visionResponse = await callOpenRouterWithFallback({
-        model: VISION_MODEL,
+      const { cues } = await analyzeImagesParallel(
+        images as ImagePayload[],
         apiKey,
-        responseFormat: 'json_object',
-        messages: [{ role: 'user', content: visionContent }],
-      }, VISION_MODEL_FALLBACK)
-
-      try {
-        visualStyleCues = parseJsonResponse(visionResponse, VisualStyleCuesSchema)
-      } catch (e) {
-        console.error('Vision analysis parse failed, continuing without style cues:', e instanceof Error ? e.message : e)
-      }
+        25_000,
+      )
+      visualStyleCues = cues
     } else if (cachedVisionCues) {
       visualStyleCues = cachedVisionCues
     }
@@ -146,6 +125,7 @@ export async function POST(request: NextRequest) {
         top_p: 0.85,
         max_tokens: 4096,
         stop: ['\n\n\n'],
+        timeoutMs: 50_000,
         messages: [
           { role: 'system', content: BRIEF_SYSTEM_PROMPT },
           { role: 'user', content: briefUserMessage },
@@ -180,6 +160,7 @@ export async function POST(request: NextRequest) {
       top_p: 0.85,
       max_tokens: 4096,
       stop: ['\n\n\n'],
+      timeoutMs: 50_000,
       messages: [
         { role: 'system', content: buildSystemPrompt(targetModel, mode, creativeBrief?.medium) },
         { role: 'user', content: userMessage },

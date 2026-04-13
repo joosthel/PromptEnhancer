@@ -183,3 +183,131 @@ export function parseJsonResponse<T>(text: string, schema: z.ZodType<T>): T {
 export function parseJsonResponseUnsafe<T>(text: string): T {
   return extractJson(text) as T
 }
+
+// ---------------------------------------------------------------------------
+// Parallel per-image vision analysis
+// ---------------------------------------------------------------------------
+
+import { GEMINI_VISION_PROMPT, type VisualStyleCues } from './system-prompt'
+import { VisualStyleCuesSchema } from './schemas'
+
+/** Image payload as sent by the client. */
+export type ImagePayload =
+  | { type: 'base64'; data: string; mimeType: string }
+  | { type: 'url'; url: string }
+
+function imageToContentPart(img: ImagePayload): ContentPart {
+  if (img.type === 'base64') {
+    return { type: 'image_url', image_url: { url: `data:${img.mimeType};base64,${img.data}` } }
+  }
+  return { type: 'image_url', image_url: { url: img.url } }
+}
+
+/**
+ * Analyzes images in parallel (one API call per image) and merges results.
+ * Much more resilient than sending all images in one massive request:
+ * - Individual failures don't block others
+ * - Smaller payloads per request = fewer timeouts
+ * - Parallel execution = faster than sequential
+ *
+ * Returns merged VisualStyleCues, or undefined if all images fail.
+ */
+export async function analyzeImagesParallel(
+  images: ImagePayload[],
+  apiKey: string,
+  timeoutMs: number = 30_000,
+): Promise<{ cues: VisualStyleCues | undefined; failCount: number }> {
+  // Single image: send directly (no merge overhead)
+  if (images.length === 1) {
+    try {
+      const response = await callOpenRouterWithFallback({
+        model: VISION_MODEL,
+        apiKey,
+        responseFormat: 'json_object',
+        timeoutMs,
+        messages: [{
+          role: 'user',
+          content: [imageToContentPart(images[0]), { type: 'text', text: GEMINI_VISION_PROMPT }],
+        }],
+      }, VISION_MODEL_FALLBACK)
+      return { cues: parseJsonResponse(response, VisualStyleCuesSchema), failCount: 0 }
+    } catch (e) {
+      console.error('Vision analysis failed:', e instanceof Error ? e.message : e)
+      return { cues: undefined, failCount: 1 }
+    }
+  }
+
+  // Multiple images: analyze each in parallel
+  const results = await Promise.allSettled(
+    images.map(async (img) => {
+      const response = await callOpenRouterWithFallback({
+        model: VISION_MODEL,
+        apiKey,
+        responseFormat: 'json_object',
+        timeoutMs,
+        messages: [{
+          role: 'user',
+          content: [imageToContentPart(img), { type: 'text', text: GEMINI_VISION_PROMPT }],
+        }],
+      }, VISION_MODEL_FALLBACK)
+      return parseJsonResponse(response, VisualStyleCuesSchema)
+    })
+  )
+
+  const successful = results
+    .filter((r): r is PromiseFulfilledResult<VisualStyleCues> => r.status === 'fulfilled')
+    .map(r => r.value)
+  const failCount = results.length - successful.length
+
+  if (successful.length === 0) {
+    return { cues: undefined, failCount }
+  }
+
+  // Merge: combine descriptions, deduplicate keywords/palette, pick majority medium
+  const merged: VisualStyleCues = {
+    description: successful.map((c, i) => `[Image ${i + 1}] ${c.description}`).join('\n\n'),
+    mediumType: pickMajority(successful.map(c => c.mediumType)) ?? successful[0].mediumType,
+    mediumDetail: successful.map(c => c.mediumDetail).filter(Boolean).join('; '),
+    hexPalette: deduplicateColors(successful.flatMap(c => c.hexPalette)).slice(0, 8),
+    visualKeywords: [...new Set(successful.flatMap(c => c.visualKeywords))].slice(0, 15),
+    atmosphere: successful.map(c => c.atmosphere).filter(Boolean).join(' '),
+  }
+
+  return { cues: merged, failCount }
+}
+
+/** Returns the most common value, or undefined if empty. */
+function pickMajority<T>(values: T[]): T | undefined {
+  const counts = new Map<T, number>()
+  for (const v of values) counts.set(v, (counts.get(v) ?? 0) + 1)
+  let best: T | undefined
+  let bestCount = 0
+  for (const [v, c] of counts) {
+    if (c > bestCount) { best = v; bestCount = c }
+  }
+  return best
+}
+
+/** Deduplicates hex colors, treating similar shades (distance < 30) as the same. */
+function deduplicateColors(hexes: string[]): string[] {
+  const result: string[] = []
+  for (const hex of hexes) {
+    const rgb = hexToRgb(hex)
+    if (!rgb) continue
+    const isDupe = result.some(existing => {
+      const eRgb = hexToRgb(existing)
+      return eRgb && colorDistance(rgb, eRgb) < 30
+    })
+    if (!isDupe) result.push(hex)
+  }
+  return result
+}
+
+function hexToRgb(hex: string): [number, number, number] | null {
+  const m = hex.match(/^#?([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i)
+  return m ? [parseInt(m[1], 16), parseInt(m[2], 16), parseInt(m[3], 16)] : null
+}
+
+function colorDistance(a: [number, number, number], b: [number, number, number]): number {
+  return Math.sqrt((a[0] - b[0]) ** 2 + (a[1] - b[1]) ** 2 + (a[2] - b[2]) ** 2)
+}

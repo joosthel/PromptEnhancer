@@ -7,9 +7,9 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { callOpenRouterWithFallback, parseJsonResponse, ContentPart, TEXT_MODEL, TEXT_MODEL_FALLBACK, VISION_MODEL, VISION_MODEL_FALLBACK } from '@/lib/openrouter'
-import { VisualStyleCuesSchema, SinglePromptResponseSchema } from '@/lib/schemas'
-import { GEMINI_VISION_PROMPT, VisualStyleCues, ImageLabel } from '@/lib/system-prompt'
+import { callOpenRouterWithFallback, parseJsonResponse, TEXT_MODEL, TEXT_MODEL_FALLBACK, analyzeImagesParallel, type ImagePayload } from '@/lib/openrouter'
+import { SinglePromptResponseSchema } from '@/lib/schemas'
+import { VisualStyleCues, ImageLabel } from '@/lib/system-prompt'
 import { buildEnhanceSystemPrompt, buildEnhanceUserMessage } from '@/lib/prompt-engine'
 import { TargetModel, GenerationMode, VALID_TARGET_MODELS, VALID_GENERATION_MODES } from '@/lib/model-profiles'
 import { rateLimit } from '@/lib/rate-limit'
@@ -88,36 +88,14 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Step 1 (optional): Vision analysis for style reference
+    // Step 1 (optional): Vision analysis for style reference — parallel per-image
     if (hasImages && !cachedVisionCues) {
-      const imageContentParts: ContentPart[] = images.map((img) => {
-        if (img.type === 'base64') {
-          return {
-            type: 'image_url',
-            image_url: { url: `data:${img.mimeType};base64,${img.data}` },
-          }
-        }
-        return { type: 'image_url', image_url: { url: img.url } }
-      })
-
-      const visionContent: ContentPart[] = [
-        ...imageContentParts,
-        { type: 'text', text: GEMINI_VISION_PROMPT },
-      ]
-
-      const visionResponse = await callOpenRouterWithFallback({
-        model: VISION_MODEL,
+      const { cues } = await analyzeImagesParallel(
+        images as ImagePayload[],
         apiKey,
-        responseFormat: 'json_object',
-        timeoutMs: 25_000,
-        messages: [{ role: 'user', content: visionContent }],
-      }, VISION_MODEL_FALLBACK)
-
-      try {
-        visualStyleCues = parseJsonResponse(visionResponse, VisualStyleCuesSchema)
-      } catch (e) {
-        console.error('Vision analysis parse failed, continuing without style cues:', e instanceof Error ? e.message : e)
-      }
+        20_000,
+      )
+      visualStyleCues = cues
     } else if (cachedVisionCues) {
       visualStyleCues = cachedVisionCues
     }
