@@ -87,6 +87,7 @@ export async function POST(request: NextRequest) {
       top_p: 0.8,
       max_tokens: 2048,
       stop: ['\n\n\n'],
+      timeoutMs: 50_000,
       messages: [
         { role: 'system', content: buildReformatSystemPrompt(fromModel, toModel) },
         { role: 'user', content: userMessage },

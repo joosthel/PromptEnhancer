@@ -109,6 +109,7 @@ export async function POST(request: NextRequest) {
         model: VISION_MODEL,
         apiKey,
         responseFormat: 'json_object',
+        timeoutMs: 25_000,
         messages: [{ role: 'user', content: visionContent }],
       }, VISION_MODEL_FALLBACK)
 
@@ -132,6 +133,7 @@ export async function POST(request: NextRequest) {
       top_p: 0.85,
       max_tokens: 2048,
       stop: ['\n\n\n'],
+      timeoutMs: 25_000,
       messages: [
         { role: 'system', content: buildEnhanceSystemPrompt(targetModel, mode) },
         { role: 'user', content: userMessage },

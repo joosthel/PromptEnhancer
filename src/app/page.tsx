@@ -24,6 +24,13 @@ interface GenerateResult {
 
 type LoadingPhase = 'idle' | 'analyzing' | 'briefing' | 'generating' | 'done'
 
+/** Creates an AbortSignal that fires after the given ms. */
+function fetchTimeout(ms: number): AbortSignal {
+  const controller = new AbortController()
+  setTimeout(() => controller.abort(), ms)
+  return controller.signal
+}
+
 const DEFAULT_INPUTS: UserInputs = {
   description: '',
 }
@@ -59,6 +66,7 @@ export default function Home() {
   const [loadingPhase, setLoadingPhase] = useState<LoadingPhase>('idle')
   const [result, setResult] = useState<GenerateResult | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [warnings, setWarnings] = useState<string[]>([])
   const [activeMode, setActiveMode] = useState<GenerationMode>(DEFAULT_MODE)
   const [activeModel, setActiveModel] = useState<TargetModel>(DEFAULT_MODEL)
   const [appMode, setAppMode] = useState<AppMode>('generate')
@@ -184,6 +192,7 @@ export default function Home() {
       const response = await fetch('/api/enhance', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        signal: fetchTimeout(65_000),
         body: JSON.stringify({
           prompt: userInputs.description,
           images: hasCachedCues ? [] : serializedImages,
@@ -211,7 +220,11 @@ export default function Home() {
 
       setLoadingPhase('done')
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'An unexpected error occurred')
+      if (err instanceof DOMException && err.name === 'AbortError') {
+        setError('Request timed out. The AI model took too long to respond — please try again.')
+      } else {
+        setError(err instanceof Error ? err.message : 'An unexpected error occurred. Please try again.')
+      }
       setLoadingPhase('idle')
     } finally {
       if (genTimer) clearTimeout(genTimer)
@@ -238,6 +251,7 @@ export default function Home() {
     const hasCachedBrief = !isBriefOnly && !!artBrief?.brief
 
     setError(null)
+    setWarnings([])
     setResult(null)
     setLoadingPhase(
       hasCachedBrief ? 'generating'
@@ -257,6 +271,7 @@ export default function Home() {
       const response = await fetch('/api/generate-stream', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        signal: fetchTimeout(130_000),
         body: JSON.stringify({
           images: hasCachedCues ? [] : serializedImages,
           cachedVisionCues: hasCachedCues ? visionCache!.cues : undefined,
@@ -281,6 +296,8 @@ export default function Home() {
       let buffer = ''
       let streamedVisionCues: VisualStyleCues | undefined
       let streamedBrief: CreativeBrief | undefined
+      let streamCompleted = false
+      let receivedPrompts = false
 
       while (true) {
         const { done, value } = await reader.read()
@@ -314,6 +331,9 @@ export default function Home() {
                 if (data.phase === 'analyzing' || data.phase === 'briefing' || data.phase === 'generating') {
                   setLoadingPhase(data.phase)
                 }
+                if (data.warning) {
+                  setWarnings(prev => [...prev, data.warning])
+                }
                 break
 
               case 'vision':
@@ -339,6 +359,7 @@ export default function Home() {
                 break
 
               case 'prompts':
+                receivedPrompts = true
                 if (isBriefOnly) {
                   setArtBrief({
                     brief: data.creativeBrief ?? streamedBrief,
@@ -358,6 +379,7 @@ export default function Home() {
                 break
 
               case 'done':
+                streamCompleted = true
                 setLoadingPhase('done')
                 // For art direction briefOnly, handle done event with data
                 if (isBriefOnly && data.creativeBrief) {
@@ -379,10 +401,26 @@ export default function Home() {
         }
       }
 
-      // Ensure loading is done even if 'done' event was missed
-      setLoadingPhase(prev => prev === 'idle' ? 'idle' : 'done')
+      // Detect stream death: if the stream ended but we never got a 'done' event, something went wrong
+      if (!streamCompleted) {
+        if (isBriefOnly && streamedBrief) {
+          // Art direction mode got the brief — that's enough
+          setLoadingPhase('done')
+        } else if (receivedPrompts) {
+          // Got prompts but missed done event — acceptable
+          setLoadingPhase('done')
+        } else {
+          setError('Connection lost during generation. The server may have timed out — please try again.')
+          setLoadingPhase('idle')
+          return
+        }
+      }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'An unexpected error occurred')
+      if (err instanceof DOMException && err.name === 'AbortError') {
+        setError('Request timed out. The AI model took too long to respond — please try again.')
+      } else {
+        setError(err instanceof Error ? err.message : 'An unexpected error occurred. Please try again.')
+      }
       setLoadingPhase('idle')
     }
   }
@@ -419,6 +457,7 @@ export default function Home() {
       const response = await fetch('/api/generate-stream', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        signal: fetchTimeout(130_000),
         body: JSON.stringify({
           images: hasCachedCues ? [] : serializedImages,
           cachedVisionCues: hasCachedCues ? visionCache!.cues : undefined,
@@ -441,6 +480,8 @@ export default function Home() {
       const reader = response.body.getReader()
       const decoder = new TextDecoder()
       let buffer = ''
+      let regenStreamCompleted = false
+      let regenReceivedPrompts = false
 
       while (true) {
         const { done, value } = await reader.read()
@@ -468,6 +509,7 @@ export default function Home() {
                 if (data.phase === 'generating') setLoadingPhase('generating')
                 break
               case 'prompts':
+                regenReceivedPrompts = true
                 setResult(prev => ({
                   prompts: data.prompts,
                   visualStyleCues: data.visualStyleCues ?? prev?.visualStyleCues,
@@ -475,6 +517,7 @@ export default function Home() {
                 }))
                 break
               case 'done':
+                regenStreamCompleted = true
                 setLoadingPhase('done')
                 break
               case 'error':
@@ -488,9 +531,18 @@ export default function Home() {
         }
       }
 
-      setLoadingPhase(prev => prev === 'idle' ? 'idle' : 'done')
+      if (!regenStreamCompleted && !regenReceivedPrompts) {
+        setError('Connection lost during regeneration. Please try again.')
+        setLoadingPhase('idle')
+      } else if (!regenStreamCompleted) {
+        setLoadingPhase('done')
+      }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'An unexpected error occurred')
+      if (err instanceof DOMException && err.name === 'AbortError') {
+        setError('Request timed out. The AI model took too long to respond — please try again.')
+      } else {
+        setError(err instanceof Error ? err.message : 'An unexpected error occurred. Please try again.')
+      }
       setLoadingPhase('idle')
     }
   }
@@ -769,8 +821,16 @@ export default function Home() {
             )}
 
             {error && (
-              <div role="alert" className="border border-red-100 bg-red-50 rounded-sm px-3 py-2 shrink-0">
-                <p className="text-xs text-red-600">{error}</p>
+              <div role="alert" className="border border-red-200 bg-red-50 rounded-sm px-3 py-2.5 shrink-0">
+                <p className="text-xs text-red-700 font-medium">{error}</p>
+              </div>
+            )}
+
+            {warnings.length > 0 && !error && (
+              <div className="border border-amber-200 bg-amber-50 rounded-sm px-3 py-2 shrink-0 space-y-1">
+                {warnings.map((w, i) => (
+                  <p key={i} className="text-xs text-amber-700">{w}</p>
+                ))}
               </div>
             )}
 
@@ -779,7 +839,7 @@ export default function Home() {
               disabled={isLoading}
               className="w-full py-3 bg-neutral-900 text-white text-sm rounded-sm hover:bg-neutral-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
             >
-              {isLoading ? loadingText : generateLabel}
+              {isLoading ? loadingText : error ? 'Retry' : generateLabel}
             </button>
             <div aria-live="polite" className="sr-only">
               {isLoading ? loadingText : ''}

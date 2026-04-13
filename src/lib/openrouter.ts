@@ -41,20 +41,26 @@ export interface OpenRouterOptions {
   max_tokens?: number
   /** Stop sequences to prevent trailing text after JSON. */
   stop?: string[]
+  /** Per-call timeout in ms. Defaults to 50_000 (50s) to fit inside Vercel's 60s limit. */
+  timeoutMs?: number
 }
 
 /**
  * Sends a chat completion request to OpenRouter and returns the raw text
- * content of the first choice. Applies a 90-second abort timeout.
+ * content of the first choice.
+ *
+ * Timeout defaults to 50s so it completes well inside Vercel's 60s function limit.
+ * The generate-stream route passes a higher value for its 120s budget.
  *
  * @throws {Error} If the HTTP response is not OK or the response body contains no content.
  */
 export async function callOpenRouter(options: OpenRouterOptions): Promise<string> {
   const MAX_RETRIES = 2
+  const timeoutMs = options.timeoutMs ?? 50_000
 
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
     const controller = new AbortController()
-    const timeout = setTimeout(() => controller.abort(), 150_000)
+    const timeout = setTimeout(() => controller.abort(), timeoutMs)
 
     try {
       const response = await fetch(OPENROUTER_API_URL, {
@@ -98,6 +104,10 @@ export async function callOpenRouter(options: OpenRouterOptions): Promise<string
       return content
     } catch (error) {
       clearTimeout(timeout)
+      // Surface a clear message when the request was aborted by our timeout
+      if (error instanceof DOMException && error.name === 'AbortError') {
+        throw new Error(`AI model timed out after ${Math.round(timeoutMs / 1000)}s. Try again — this usually resolves on retry.`)
+      }
       // Only retry on empty responses, not on API errors or aborts
       if (attempt < MAX_RETRIES && error instanceof Error && error.message === 'Empty response from OpenRouter') {
         continue

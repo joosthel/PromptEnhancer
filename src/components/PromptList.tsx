@@ -56,9 +56,12 @@ export default function PromptList({
         revisionNote = cat?.label ?? fixCategory
       }
 
+      const reviseTimeout = new AbortController()
+      const reviseTimer = setTimeout(() => reviseTimeout.abort(), 65_000)
       const res = await fetch('/api/revise', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        signal: reviseTimeout.signal,
         body: JSON.stringify({
           prompt: currentPrompt,
           label: prompts[index].label,
@@ -72,6 +75,7 @@ export default function PromptList({
         }),
       })
 
+      clearTimeout(reviseTimer)
       const data = await res.json()
       if (!res.ok) throw new Error(data.error ?? `Request failed with status ${res.status}`)
 
@@ -127,9 +131,12 @@ export default function PromptList({
     })
 
     try {
+      const reformatTimeout = new AbortController()
+      const reformatTimer = setTimeout(() => reformatTimeout.abort(), 65_000)
       const res = await fetch('/api/reformat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        signal: reformatTimeout.signal,
         body: JSON.stringify({
           prompt: prompts[index].prompt,
           label: prompts[index].label,
@@ -138,6 +145,7 @@ export default function PromptList({
         }),
       })
 
+      clearTimeout(reformatTimer)
       const data = await res.json()
       if (!res.ok) throw new Error(data.error ?? `Request failed with status ${res.status}`)
 

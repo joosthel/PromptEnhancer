@@ -21,7 +21,7 @@ import { TargetModel, GenerationMode, VALID_TARGET_MODELS, VALID_GENERATION_MODE
 import { VisualStyleCuesSchema, CreativeBriefSchema, PromptsResponseSchema } from '@/lib/schemas'
 import { rateLimit } from '@/lib/rate-limit'
 
-export const maxDuration = 60
+export const maxDuration = 120
 
 interface GenerateStreamRequest {
   images: Array<
@@ -157,13 +157,16 @@ export async function POST(request: NextRequest) {
             apiKey,
             responseFormat: 'json_object',
             messages: [{ role: 'user', content: visionContent }],
+            timeoutMs: 45_000,
           }, VISION_MODEL_FALLBACK)
 
           try {
             visualStyleCues = parseJsonResponse(visionResponse, VisualStyleCuesSchema)
             send('vision', visualStyleCues)
           } catch (e) {
-            console.error('Vision parse failed:', e instanceof Error ? e.message : e)
+            const msg = e instanceof Error ? e.message : String(e)
+            console.error('Vision parse failed:', msg)
+            send('phase', { phase: 'briefing', warning: 'Vision analysis failed — continuing without style cues.' })
           }
         } else if (cachedVisionCues) {
           visualStyleCues = cachedVisionCues
@@ -185,6 +188,7 @@ export async function POST(request: NextRequest) {
             top_p: 0.85,
             max_tokens: 4096,
             stop: ['\n\n\n'],
+            timeoutMs: 45_000,
             messages: [
               { role: 'system', content: BRIEF_SYSTEM_PROMPT },
               { role: 'user', content: briefUserMessage },
@@ -195,7 +199,9 @@ export async function POST(request: NextRequest) {
             creativeBrief = parseJsonResponse(briefResponse, CreativeBriefSchema)
             send('brief', creativeBrief)
           } catch (e) {
-            console.error('Brief parse failed:', e instanceof Error ? e.message : e)
+            const msg = e instanceof Error ? e.message : String(e)
+            console.error('Brief parse failed:', msg)
+            send('phase', { phase: 'generating', warning: 'Brief generation failed — generating prompts without brief.' })
           }
         }
 
@@ -227,6 +233,7 @@ export async function POST(request: NextRequest) {
           top_p: 0.85,
           max_tokens: 4096,
           stop: ['\n\n\n'],
+          timeoutMs: 50_000,
           messages: [
             { role: 'system', content: buildSystemPrompt(targetModel, mode, creativeBrief?.medium) },
             { role: 'user', content: userMessage },

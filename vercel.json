@@ -1,0 +1,19 @@
+{
+  "functions": {
+    "src/app/api/generate-stream/**": {
+      "maxDuration": 300
+    },
+    "src/app/api/generate/**": {
+      "maxDuration": 120
+    },
+    "src/app/api/enhance/**": {
+      "maxDuration": 60
+    },
+    "src/app/api/revise/**": {
+      "maxDuration": 60
+    },
+    "src/app/api/reformat/**": {
+      "maxDuration": 60
+    }
+  }
+}
