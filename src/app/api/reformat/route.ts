@@ -85,8 +85,7 @@ export async function POST(request: NextRequest) {
       responseFormat: 'json_object',
       temperature: 0.3,
       top_p: 0.8,
-      max_tokens: 2048,
-      stop: ['\n\n\n'],
+      max_tokens: 4096,
       timeoutMs: 50_000,
       messages: [
         { role: 'system', content: buildReformatSystemPrompt(fromModel, toModel) },

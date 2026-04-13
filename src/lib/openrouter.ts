@@ -263,9 +263,15 @@ export async function analyzeImagesParallel(
     return { cues: undefined, failCount }
   }
 
-  // Merge: combine descriptions, deduplicate keywords/palette, pick majority medium
+  // Merge: combine descriptions (capped), deduplicate keywords/palette, pick majority medium
+  // Cap each description to ~150 words to prevent the downstream brief prompt from exploding
+  const cappedDescriptions = successful.map((c, i) => {
+    const words = c.description.split(/\s+/)
+    const trimmed = words.length > 150 ? words.slice(0, 150).join(' ') + '...' : c.description
+    return `[Image ${i + 1}] ${trimmed}`
+  })
   const merged: VisualStyleCues = {
-    description: successful.map((c, i) => `[Image ${i + 1}] ${c.description}`).join('\n\n'),
+    description: cappedDescriptions.join('\n\n'),
     mediumType: pickMajority(successful.map(c => c.mediumType)) ?? successful[0].mediumType,
     mediumDetail: successful.map(c => c.mediumDetail).filter(Boolean).join('; '),
     hexPalette: deduplicateColors(successful.flatMap(c => c.hexPalette)).slice(0, 8),

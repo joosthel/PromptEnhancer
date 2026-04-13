@@ -109,8 +109,7 @@ export async function POST(request: NextRequest) {
       responseFormat: 'json_object',
       temperature: 0.4,
       top_p: 0.85,
-      max_tokens: 2048,
-      stop: ['\n\n\n'],
+      max_tokens: 4096,
       timeoutMs: 25_000,
       messages: [
         { role: 'system', content: buildEnhanceSystemPrompt(targetModel, mode) },

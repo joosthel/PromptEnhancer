@@ -117,25 +117,31 @@ export async function POST(request: NextRequest) {
     } else if (mode === 'generate' || mode === 'video' || (mode === 'edit' && hasUserInputs)) {
       const briefUserMessage = buildBriefUserMessage(userInputs, mode, promptCount, visualStyleCues, imageLabels)
 
-      const briefResponse = await callOpenRouterWithFallback({
+      const briefOptions = {
         model: TEXT_MODEL,
         apiKey,
-        responseFormat: 'json_object',
-        temperature: 0.5,
+        responseFormat: 'json_object' as const,
+        temperature: 0.3,
         top_p: 0.85,
-        max_tokens: 4096,
-        stop: ['\n\n\n'],
+        max_tokens: 8192,
         timeoutMs: 50_000,
         messages: [
-          { role: 'system', content: BRIEF_SYSTEM_PROMPT },
-          { role: 'user', content: briefUserMessage },
+          { role: 'system' as const, content: BRIEF_SYSTEM_PROMPT },
+          { role: 'user' as const, content: briefUserMessage },
         ],
-      }, TEXT_MODEL_FALLBACK)
+      }
 
-      try {
-        creativeBrief = parseJsonResponse(briefResponse, CreativeBriefSchema)
-      } catch (e) {
-        console.error('Brief generation parse failed, continuing without brief:', e instanceof Error ? e.message : e)
+      for (let briefAttempt = 0; briefAttempt < 2; briefAttempt++) {
+        try {
+          const briefResponse = await callOpenRouterWithFallback(
+            briefAttempt === 0 ? briefOptions : { ...briefOptions, temperature: 0.15 },
+            TEXT_MODEL_FALLBACK
+          )
+          creativeBrief = parseJsonResponse(briefResponse, CreativeBriefSchema)
+          break
+        } catch (e) {
+          console.error(`Brief attempt ${briefAttempt + 1} failed:`, e instanceof Error ? e.message : e)
+        }
       }
     }
 
@@ -158,8 +164,7 @@ export async function POST(request: NextRequest) {
       responseFormat: 'json_object',
       temperature: 0.4,
       top_p: 0.85,
-      max_tokens: 4096,
-      stop: ['\n\n\n'],
+      max_tokens: 8192,
       timeoutMs: 50_000,
       messages: [
         { role: 'system', content: buildSystemPrompt(targetModel, mode, creativeBrief?.medium) },
