@@ -24,11 +24,11 @@ interface GenerateResult {
 
 type LoadingPhase = 'idle' | 'analyzing' | 'briefing' | 'generating' | 'done'
 
-/** Creates an AbortSignal that fires after the given ms. */
-function fetchTimeout(ms: number): AbortSignal {
+/** Creates an AbortSignal that fires after the given ms, with a cleanup function. */
+function fetchTimeout(ms: number): { signal: AbortSignal; clear: () => void } {
   const controller = new AbortController()
-  setTimeout(() => controller.abort(), ms)
-  return controller.signal
+  const timer = setTimeout(() => controller.abort(), ms)
+  return { signal: controller.signal, clear: () => clearTimeout(timer) }
 }
 
 const DEFAULT_INPUTS: UserInputs = {
@@ -179,6 +179,7 @@ export default function Home() {
       genTimer = setTimeout(() => setLoadingPhase('generating'), 7000)
     }
 
+    const timeout = fetchTimeout(65_000)
     try {
       const serializedImages = hasImages
         ? images.map((img) => {
@@ -192,7 +193,7 @@ export default function Home() {
       const response = await fetch('/api/enhance', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        signal: fetchTimeout(65_000),
+        signal: timeout.signal,
         body: JSON.stringify({
           prompt: userInputs.description,
           images: hasCachedCues ? [] : serializedImages,
@@ -227,6 +228,7 @@ export default function Home() {
       }
       setLoadingPhase('idle')
     } finally {
+      timeout.clear()
       if (genTimer) clearTimeout(genTimer)
     }
   }
@@ -260,6 +262,7 @@ export default function Home() {
         : 'briefing'
     )
 
+    const timeout = fetchTimeout(130_000)
     try {
       const serializedImages = images.map((img) => {
         if (img.type === 'base64') {
@@ -271,7 +274,7 @@ export default function Home() {
       const response = await fetch('/api/generate-stream', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        signal: fetchTimeout(130_000),
+        signal: timeout.signal,
         body: JSON.stringify({
           images: hasCachedCues ? [] : serializedImages,
           cachedVisionCues: hasCachedCues ? visionCache!.cues : undefined,
@@ -394,9 +397,12 @@ export default function Home() {
                 throw new Error(data.error ?? 'An unexpected error occurred')
             }
           } catch (parseErr) {
-            if (parseErr instanceof Error && parseErr.message !== 'An unexpected error occurred') {
+            // Re-throw server error events (thrown from case 'error')
+            if (parseErr instanceof Error && eventName === 'error') {
               throw parseErr
             }
+            // Log and skip malformed SSE events (JSON parse failures, etc.)
+            console.warn('Skipping malformed SSE event:', eventName, parseErr)
           }
         }
       }
@@ -422,6 +428,8 @@ export default function Home() {
         setError(err instanceof Error ? err.message : 'An unexpected error occurred. Please try again.')
       }
       setLoadingPhase('idle')
+    } finally {
+      timeout.clear()
     }
   }
 
@@ -446,6 +454,7 @@ export default function Home() {
 
     setLoadingPhase('generating')
 
+    const timeout = fetchTimeout(130_000)
     try {
       const serializedImages = images.map((img) => {
         if (img.type === 'base64') {
@@ -457,7 +466,7 @@ export default function Home() {
       const response = await fetch('/api/generate-stream', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        signal: fetchTimeout(130_000),
+        signal: timeout.signal,
         body: JSON.stringify({
           images: hasCachedCues ? [] : serializedImages,
           cachedVisionCues: hasCachedCues ? visionCache!.cues : undefined,
@@ -524,9 +533,12 @@ export default function Home() {
                 throw new Error(data.error ?? 'An unexpected error occurred')
             }
           } catch (parseErr) {
-            if (parseErr instanceof Error && parseErr.message !== 'An unexpected error occurred') {
+            // Re-throw server error events (thrown from case 'error')
+            if (parseErr instanceof Error && eventName === 'error') {
               throw parseErr
             }
+            // Log and skip malformed SSE events (JSON parse failures, etc.)
+            console.warn('Skipping malformed SSE event:', eventName, parseErr)
           }
         }
       }
@@ -544,6 +556,8 @@ export default function Home() {
         setError(err instanceof Error ? err.message : 'An unexpected error occurred. Please try again.')
       }
       setLoadingPhase('idle')
+    } finally {
+      timeout.clear()
     }
   }
 

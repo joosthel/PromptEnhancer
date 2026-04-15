@@ -115,24 +115,17 @@ C) PER-FRAME COMPOSITION — assign a UNIQUE compositional strategy to each fram
 PHASE A: INTENT & CREATIVE VISION
 ═══════════════════════════════════════════════════════════════
 
-1. INTENT (1 sentence) — What are we creating? Name the genre and purpose.
-   BAD: "moody photography"
-   GOOD: "editorial jewelry campaign with intimate, minimalist portraits"
-   GOOD: "cinematic stills for a neo-noir thriller — urban isolation"
+1. INTENT (1 sentence) — The genre and purpose of the set. Be specific about the commercial or editorial context, not just the mood.
+   ANTI-PATTERN: Do NOT write vague genre labels ("moody photography", "cinematic portraits"). Instead, name the specific output context — what this set IS FOR and what makes it distinct from generic work in the same genre.
 
-2. TECHNICAL APPROACH (1 sentence) — The production approach in concrete terms.
-   BAD: "cinematic lighting with shallow depth"
-   GOOD: "85mm portraits, single window light from camera-left, shallow depth against neutral backdrops"
-   GOOD: "wide-angle environmental shots, overhead fluorescent mixed with neon practicals, deep focus"
+2. TECHNICAL APPROACH (1 sentence) — The concrete production choices: lens, light source, depth strategy, framing logic.
+   ANTI-PATTERN: Do NOT write abstract quality descriptors ("cinematic lighting with shallow depth"). Instead, name specific physical choices — focal length, light source and direction, depth of field strategy.
 
-3. CREATIVE VISION (1-2 sentences) — The bold visual idea that unifies the set. Every downstream decision serves this.
-   BAD: "moody urban photography with cinematic lighting"
-   GOOD: "the city after everyone left — not abandoned, but holding its breath"
-   GOOD: "bodies as architecture — skin and bone creating the same tensions as concrete and steel"
+3. CREATIVE VISION (1-2 sentences) — The specific visual logic that unifies this set. What makes it look like THIS and not a generic version of the same genre?
+   ANTI-PATTERN: Do NOT write literary metaphors ("the city holding its breath", "bodies as architecture"). Instead, describe the concrete visual strategy — what the camera does, what the light does, what the surfaces look like.
 
-4. VISUAL METAPHOR (1 sentence) — The metaphorical lens through which the subject is seen.
-   BAD: "person standing in a room"
-   GOOD: "the subject is a foreign object the environment is slowly absorbing"
+4. VISUAL METAPHOR (1 sentence) — The conceptual lens through which the subject is interpreted. How does the visual treatment reframe what we're looking at?
+   ANTI-PATTERN: Do NOT write flat descriptions ("person standing in a room"). Instead, articulate the relationship between subject and environment — how the visual treatment transforms the literal into something specific to THIS set.
 
 5. DOMINANT CREATIVE PRIORITY — Which dimension dominates across the set? Pick ONE:
    lighting | texture | scale | emptiness | color | tension | detail
@@ -183,6 +176,7 @@ DIVERSITY CONSTRAINTS (MANDATORY):
 - No two frames may share the same subject placement
 - At least one frame must use negative space as dominant element
 - At least one frame must have a non-eye-level camera angle
+NOTE: For 1-2 frames, these constraints are advisory, not mandatory. Focus on making each frame as strong as possible rather than forcing artificial variety.
 
 RULES:
 - Every field: concrete enough to execute without interpretation. No hedging.
@@ -310,6 +304,17 @@ export function buildBriefUserMessage(
   lines.push('\n=== CREATIVE DIRECTION (from user) ===')
   if (hasText) {
     lines.push(userInputs.description)
+
+    // Extract hard constraints from user input for explicit preservation
+    const constraintPatterns = /(?:^|\.\s+)([^.]*?\b(?:no |must |always |never |only |don't |do not |without |exclude|avoid)\b[^.]*\.?)/gi
+    const matches = userInputs.description.match(constraintPatterns)
+    if (matches && matches.length > 0) {
+      lines.push('\n=== EXTRACTED HARD CONSTRAINTS ===')
+      lines.push('These constraints were explicitly stated by the user and are NON-NEGOTIABLE:')
+      for (const m of matches) {
+        lines.push(`- ${m.trim()}`)
+      }
+    }
   } else if (hasImages) {
     lines.push('(No text description — derive concepts from the visual analysis above.)')
   } else {
@@ -317,6 +322,18 @@ export function buildBriefUserMessage(
   }
 
   lines.push('\nFirst define the INTENT and CREATIVE VISION (Phase A). Then lock the production brief. Then assign per-frame compositions.')
+
+  // Inject a random creative angle to break template patterns across generations
+  const VARIATION_SEEDS = [
+    'CREATIVE ANGLE: Lead with texture and material quality as the dominant organizing principle.',
+    'CREATIVE ANGLE: Lead with spatial tension — the relationship between subject and negative space.',
+    'CREATIVE ANGLE: Lead with color contrast as the primary visual driver.',
+    'CREATIVE ANGLE: Lead with scale relationships — how elements dwarf or intimate with each other.',
+    'CREATIVE ANGLE: Lead with light behavior — how light transforms surfaces and creates depth.',
+    'CREATIVE ANGLE: Lead with temporal quality — the sense of a specific frozen moment.',
+  ]
+  const selectedSeed = VARIATION_SEEDS[Math.floor(Math.random() * VARIATION_SEEDS.length)]
+  lines.push(`\n${selectedSeed}`)
 
   // Hard constraints at the END — DeepSeek applies end-of-message instructions most reliably
   lines.push('\n═══════════════════════════════════════════════════════════════')
@@ -353,40 +370,48 @@ The brief specifies medium: "${medium}". Your prompts must produce output in thi
     : (targetModel === 'flux-2-klein-9b' ? CINEMATIC_PROMPT_STYLE : '')
 
   const promptStructure = isIllustration
-    ? `Write each prompt as a SINGLE FLOWING PARAGRAPH. Structure your writing in this order:
+    ? `Write each prompt as a SINGLE FLOWING PARAGRAPH.
 
-1. INTENT + MEDIUM + COMPOSITION (first 25% of tokens — strongest influence)
-   Open with what you're creating and the artistic medium. Include viewpoint and focal hierarchy.
-   Example: "Watercolor editorial portrait, centered composition, figure in the lower third against empty painted sky."
+PROMPT PRINCIPLES:
+- Front-load the subject, medium, and intent in the first 25% of tokens (strongest influence zone)
+- After the subject, let the shot card guide emphasis: a shot dominated by color should foreground the palette and washes; a shot about texture should lead with medium technique; a shot about composition should establish spatial relationships first
+- Color treatment from the brief must appear VERBATIM — but its position in the prompt can vary
+- Include one medium-specific texture cue per prompt (brushwork, paper grain, pigment quality)
+- Write as a single flowing paragraph — no bullet points, no numbered sections
 
-2. SUBJECT + ACTION
-   Physical description as depicted in the medium. What they're doing — pose, gesture, energy.
-   Example: "A woman in a dark dress rendered in confident single strokes, hands folded, weight resting forward."
+VARIETY MANDATE:
+Each prompt in the set must read differently from the others. Vary:
+- Opening words (do NOT start every prompt with "Watercolor portrait of" or "Ink wash illustration of")
+- Sentence length and rhythm
+- Which artistic element gets the most detail (medium technique, color application, composition, subject rendering)
+- Where in the prompt the color treatment appears
 
-3. ENVIRONMENT + ARTISTIC TECHNIQUE
-   Spatial depth with artistic treatment (detailed, loose, dissolved). Light as the artist rendered it.
-   Example: "Foreground foliage in precise strokes, background dissolved into wet-on-wet blooms. Warm light through yellow-ochre washes, shadows in layered blue-grey glazes."
+ANTI-PATTERNS (these make all prompts sound the same):
+- Starting every prompt with "[Medium] [composition type] of [subject]"
+- Always placing technique second and environment third
+- Using the same sentence structure across all prompts
+- Copying any example format verbatim`
+    : `Write each prompt as a SINGLE FLOWING PARAGRAPH.
 
-4. COLOR TREATMENT + MEDIUM FINISH
-   Color grade VERBATIM from brief. Medium technique and one artistic texture detail.
-   Example: "[color treatment verbatim]. Transparent washes with granulating pigment. Cold-pressed paper texture visible through thin passages."`
-    : `Write each prompt as a SINGLE FLOWING PARAGRAPH. Structure your writing in this order:
+PROMPT PRINCIPLES:
+- Front-load the subject and intent in the first 25% of tokens (strongest influence zone)
+- After the subject, let the shot card guide emphasis: a shot dominated by lighting should foreground light physics; a shot about texture should lead with materials; a shot about scale should establish spatial relationships first
+- Color grade from the brief must appear VERBATIM — but its position in the prompt can vary
+- Include one texture/naturalism cue per prompt
+- Write as a single flowing paragraph — no bullet points, no numbered sections
 
-1. INTENT + SUBJECT + FRAMING (first 25% of tokens — strongest influence)
-   Open with what you're creating and who/what the subject is. Include shot scale and camera angle.
-   Example: "Editorial portrait of a woman resting her chin on her hand, medium close-up, slightly low angle."
+VARIETY MANDATE:
+Each prompt in the set must read differently from the others. Vary:
+- Opening words (do NOT start every prompt with "Editorial portrait of" or "Cinematic still of")
+- Sentence length and rhythm
+- Which production element gets the most detail
+- Where in the prompt the color grade appears
 
-2. TECHNICAL SETUP
-   Physical light source and its effect on surfaces. Focal length / depth of field if relevant.
-   Example: "Soft diffused window light from camera-left, 85mm f/2.0, shallow depth isolating subject from the background."
-
-3. ENVIRONMENT + ATMOSPHERE
-   Setting, key surfaces, depth planes, one atmospheric detail.
-   Example: "Clean neutral studio backdrop, faint dust motes catching the key light, warm skin against cool grey."
-
-4. STYLE + COLOR GRADE
-   Color grade VERBATIM from brief. One texture cue appropriate to the scene.
-   Example: "[color grade verbatim]. Film grain, natural skin texture with visible pores."`
+ANTI-PATTERNS (these make all prompts sound the same):
+- Starting every prompt with "[Genre] [shot type] of [subject]"
+- Always placing lighting second and environment third
+- Using the same sentence structure across all prompts
+- Copying any example format verbatim`
 
   return `${intro}
 
@@ -407,6 +432,9 @@ RULES:
 - Front-load the most important information (subject, intent) in the first 25% of the prompt
 
 ${vocabBlock ? vocabBlock + '\n' : ''}${FORBIDDEN_LANGUAGE}
+
+SELF-CHECK (do this before outputting):
+Read all prompts together. If more than two start with the same sentence structure or use the same opening pattern, rewrite the repetitive ones with different emphasis and rhythm.
 
 OUTPUT: Return ONLY valid JSON:
 {
@@ -636,6 +664,17 @@ export function buildUserMessage(
       lines.push('=== ORIGINAL CREATIVE DIRECTION (hard constraints) ===')
       lines.push(userInputs.description)
       lines.push('Every constraint above is non-negotiable. Do not abstract, soften, or omit.')
+
+      // Extract and surface hard constraints separately for emphasis
+      const constraintPatterns = /(?:^|\.\s+)([^.]*?\b(?:no |must |always |never |only |don't |do not |without |exclude|avoid)\b[^.]*\.?)/gi
+      const matches = userInputs.description.match(constraintPatterns)
+      if (matches && matches.length > 0) {
+        lines.push('\n=== NON-NEGOTIABLE CHECKLIST ===')
+        lines.push('Verify EACH prompt against these constraints before outputting:')
+        for (const m of matches) {
+          lines.push(`☐ ${m.trim()}`)
+        }
+      }
     }
 
     // Pass vision cues as CONTEXT — NOT as copy-paste source material

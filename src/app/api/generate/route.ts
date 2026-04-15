@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { callOpenRouterWithFallback, parseJsonResponse, TEXT_MODEL, TEXT_MODEL_FALLBACK, analyzeImagesParallel, type ImagePayload } from '@/lib/openrouter'
+import { callOpenRouterWithFallback, parseJsonResponse, TEXT_MODEL, TEXT_MODEL_FALLBACK, analyzeImagesParallel, toApiErrorResponse, type ImagePayload } from '@/lib/openrouter'
 import { CreativeBriefSchema, PromptsResponseSchema } from '@/lib/schemas'
 import { UserInputs, VisualStyleCues, ImageLabel, CreativeBrief } from '@/lib/system-prompt'
 import { buildSystemPrompt, buildUserMessage, BRIEF_SYSTEM_PROMPT, buildBriefUserMessage } from '@/lib/prompt-engine'
@@ -184,9 +184,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(response)
   } catch (error) {
-    const message = error instanceof Error
-      ? (error.message.startsWith('OpenRouter API error') ? 'Generation failed. Please try again.' : error.message)
-      : 'An unexpected error occurred'
-    return NextResponse.json({ error: message }, { status: 500 })
+    const { error: message, code, status } = toApiErrorResponse(error)
+    return NextResponse.json({ error: message, code }, { status })
   }
 }

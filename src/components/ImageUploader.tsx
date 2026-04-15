@@ -6,7 +6,7 @@ import { ImageInput, fileToImageInput, extractImageFromClipboard, isValidImageUr
 import { ImageLabel } from '@/lib/system-prompt'
 
 const MAX_IMAGES = 10
-const MAX_FILE_SIZE_MB = 10
+const MAX_FILE_SIZE_MB = 2
 
 const LABEL_PRESETS = ['style reference', 'subject', 'face', 'background', 'composition']
 

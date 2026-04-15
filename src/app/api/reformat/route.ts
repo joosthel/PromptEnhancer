@@ -8,7 +8,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { callOpenRouterWithFallback, parseJsonResponse, TEXT_MODEL, TEXT_MODEL_FALLBACK } from '@/lib/openrouter'
+import { callOpenRouterWithFallback, parseJsonResponse, TEXT_MODEL, TEXT_MODEL_FALLBACK, toApiErrorResponse } from '@/lib/openrouter'
 import { SinglePromptResponseSchema } from '@/lib/schemas'
 import { buildReformatSystemPrompt, buildReformatUserMessage } from '@/lib/prompt-engine'
 import { TargetModel, VALID_TARGET_MODELS } from '@/lib/model-profiles'
@@ -98,7 +98,7 @@ export async function POST(request: NextRequest) {
     const response: ReformatResponse = { prompt: parsed.prompt }
     return NextResponse.json(response)
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'An unexpected error occurred'
-    return NextResponse.json({ error: message }, { status: 500 })
+    const { error: message, code, status } = toApiErrorResponse(error)
+    return NextResponse.json({ error: message, code }, { status })
   }
 }
