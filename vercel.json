@@ -1,18 +1,18 @@
 {
   "functions": {
-    "api/generate-stream": {
+    "src/app/api/generate-stream/**": {
       "maxDuration": 300
     },
-    "api/generate": {
+    "src/app/api/generate/**": {
       "maxDuration": 120
     },
-    "api/enhance": {
+    "src/app/api/enhance/**": {
       "maxDuration": 60
     },
-    "api/revise": {
+    "src/app/api/revise/**": {
       "maxDuration": 60
     },
-    "api/reformat": {
+    "src/app/api/reformat/**": {
       "maxDuration": 60
     }
   }
