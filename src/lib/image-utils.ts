@@ -16,13 +16,42 @@ export type ImageInput =
   | { type: 'base64'; data: string; mimeType: string; preview: string }
   | { type: 'url'; url: string; preview: string }
 
-const MAX_DIMENSION = 1280
-const JPEG_QUALITY = 0.85
+const MAX_OUTPUT_BASE64_CHARS = 1_400_000
+
+// Ordered fallbacks: lower quality first at full resolution, then downscale.
+const COMPRESSION_ATTEMPTS: Array<readonly [dim: number, quality: number]> = [
+  [1920, 0.85],
+  [1920, 0.75],
+  [1920, 0.65],
+  [1920, 0.55],
+  [1600, 0.75],
+  [1280, 0.75],
+]
+
+function resizeAndEncode(img: HTMLImageElement, maxDim: number, quality: number): string {
+  let { width, height } = img
+  if (width > maxDim || height > maxDim) {
+    if (width >= height) {
+      height = Math.round((height * maxDim) / width)
+      width = maxDim
+    } else {
+      width = Math.round((width * maxDim) / height)
+      height = maxDim
+    }
+  }
+  const canvas = document.createElement('canvas')
+  canvas.width = width
+  canvas.height = height
+  const ctx = canvas.getContext('2d')!
+  ctx.drawImage(img, 0, 0, width, height)
+  return canvas.toDataURL('image/jpeg', quality)
+}
 
 /**
- * Reads a File, resizes it to at most {@link MAX_DIMENSION} on the longest side,
- * compresses it to JPEG at {@link JPEG_QUALITY}, and returns an {@link ImageInput}.
- * Uses an off-screen canvas — browser-only, not SSR-safe.
+ * Reads a File, resizes to at most 1920px on the longest side, and compresses
+ * to JPEG. If the encoded base64 exceeds {@link MAX_OUTPUT_BASE64_CHARS}, walks
+ * down quality and dimension until it fits. Uses an off-screen canvas —
+ * browser-only, not SSR-safe.
  */
 export async function fileToImageInput(file: File): Promise<ImageInput> {
   return new Promise((resolve, reject) => {
@@ -31,26 +60,11 @@ export async function fileToImageInput(file: File): Promise<ImageInput> {
       const dataUrl = reader.result as string
       const img = new Image()
       img.onload = () => {
-        const canvas = document.createElement('canvas')
-        let { width, height } = img
-
-        // Scale down if needed
-        if (width > MAX_DIMENSION || height > MAX_DIMENSION) {
-          if (width >= height) {
-            height = Math.round((height * MAX_DIMENSION) / width)
-            width = MAX_DIMENSION
-          } else {
-            width = Math.round((width * MAX_DIMENSION) / height)
-            height = MAX_DIMENSION
-          }
+        let compressed = ''
+        for (const [dim, quality] of COMPRESSION_ATTEMPTS) {
+          compressed = resizeAndEncode(img, dim, quality)
+          if (compressed.length <= MAX_OUTPUT_BASE64_CHARS) break
         }
-
-        canvas.width = width
-        canvas.height = height
-        const ctx = canvas.getContext('2d')!
-        ctx.drawImage(img, 0, 0, width, height)
-
-        const compressed = canvas.toDataURL('image/jpeg', JPEG_QUALITY)
         const [prefix, data] = compressed.split(',')
         const mimeType = prefix.split(':')[1].split(';')[0]
         resolve({ type: 'base64', data, mimeType, preview: compressed })

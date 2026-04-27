@@ -6,7 +6,7 @@ import { ImageInput, fileToImageInput, extractImageFromClipboard, isValidImageUr
 import { ImageLabel } from '@/lib/system-prompt'
 
 const MAX_IMAGES = 10
-const MAX_FILE_SIZE_MB = 2
+const MAX_RAW_FILE_SIZE_MB = 50
 
 const LABEL_PRESETS = ['style reference', 'subject', 'face', 'background', 'composition']
 
@@ -40,13 +40,18 @@ export default function ImageUploader({ images, imageLabels, maxImages, onChange
 
       for (const file of toProcess) {
         if (!file.type.startsWith('image/')) continue
-        if (file.size > MAX_FILE_SIZE_MB * 1024 * 1024) {
-          setFileSizeError(`${file.name} exceeds ${MAX_FILE_SIZE_MB}MB limit and was skipped.`)
+        if (file.size > MAX_RAW_FILE_SIZE_MB * 1024 * 1024) {
+          setFileSizeError(`${file.name} exceeds ${MAX_RAW_FILE_SIZE_MB}MB and was skipped.`)
           setTimeout(() => setFileSizeError(''), 5000)
           continue
         }
-        const img = await fileToImageInput(file)
-        results.push(img)
+        try {
+          const img = await fileToImageInput(file)
+          results.push(img)
+        } catch {
+          setFileSizeError(`Couldn't process ${file.name}. Try a different format (JPG, PNG, WebP).`)
+          setTimeout(() => setFileSizeError(''), 5000)
+        }
       }
 
       if (results.length > 0) {
@@ -186,7 +191,7 @@ export default function ImageUploader({ images, imageLabels, maxImages, onChange
             Drop images, click to browse, or paste
           </p>
           <p className="text-xs text-neutral-300 mt-1">
-            PNG, JPG, WebP — max {MAX_FILE_SIZE_MB}MB each
+            PNG, JPG, WebP — auto-resized to Full HD
           </p>
         </div>
       )}

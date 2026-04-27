@@ -82,8 +82,8 @@ export async function POST(request: NextRequest) {
     }
     if (hasImages) {
       for (const img of images) {
-        if (img.type === 'base64' && img.data.length > 2_800_000) {
-          return NextResponse.json({ error: 'Image too large. Max ~2MB per image.' }, { status: 400 })
+        if (img.type === 'base64' && img.data.length > 4_000_000) {
+          return NextResponse.json({ error: 'Image too large after compression. Try a smaller source image.' }, { status: 400 })
         }
       }
     }
