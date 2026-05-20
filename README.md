@@ -154,8 +154,8 @@ src/
 The same deployment also exposes an [MCP](https://modelcontextprotocol.io) server, so the
 prompt engine can be called from MCP clients (Langdock, Claude, Cursor, …) — not just the web UI.
 
-- **Endpoint (Streamable HTTP):** `https://<your-deployment>/api/mcp`
-- **Legacy SSE fallback:** `https://<your-deployment>/api/sse`
+- **Endpoint (Streamable HTTP):** `https://app-tau-bay-15.vercel.app/api/mcp` — live in production. Any custom domain on this project + `/api/mcp` works identically.
+- **Legacy SSE fallback:** `/api/sse`
 - **Auth:** none — usage is bounded by a per-IP rate limit and your OpenRouter spend cap. Treat the URL as a shared secret.
 
 Add the `/api/mcp` URL as a custom MCP integration in your client. Tools exposed:
