@@ -120,8 +120,9 @@ src/
     api/
       generate/route.ts       # Three-step pipeline: vision → brief → prompts
       enhance/route.ts        # Single-step prompt enhancement
-      fix/route.ts            # Single-card fix/revision
+      revise/route.ts         # Single-card fix/revision
       reformat/route.ts       # Cross-model prompt reformatting
+      [transport]/route.ts    # MCP server (/api/mcp, /api/sse)
   components/
     ModeSelector.tsx          # Three app modes + sub-mode chips
     ModelSelector.tsx         # Target model cards with descriptions
@@ -137,6 +138,7 @@ src/
     CreditPopup.tsx           # API credit acknowledgment popup
     HelpModal.tsx             # How-it-works documentation modal
   lib/
+    services.ts               # Shared orchestration (enhance/generate/revise/reformat) — used by REST routes + MCP
     openrouter.ts             # Typed fetch wrapper for OpenRouter API
     system-prompt.ts          # Vision prompt, types, shared constants
     prompt-engine.ts          # System prompt + user message builders
@@ -146,6 +148,34 @@ src/
 ```
 
 ---
+
+## MCP server
+
+The same deployment also exposes an [MCP](https://modelcontextprotocol.io) server, so the
+prompt engine can be called from MCP clients (Langdock, Claude, Cursor, …) — not just the web UI.
+
+- **Endpoint (Streamable HTTP):** `https://<your-deployment>/api/mcp`
+- **Legacy SSE fallback:** `https://<your-deployment>/api/sse`
+- **Auth:** none — usage is bounded by a per-IP rate limit and your OpenRouter spend cap. Treat the URL as a shared secret.
+
+Add the `/api/mcp` URL as a custom MCP integration in your client. Tools exposed:
+
+| Tool | Purpose |
+|---|---|
+| `enhance_prompt` | Optimize an existing prompt for a target model (optional reference images). |
+| `generate_prompts` | Full pipeline (vision → brief → prompts). `briefOnly: true` returns just the creative brief (Art Direction). |
+| `revise_prompt` | Refine a single prompt via a note and/or fix category. |
+| `reformat_prompt` | Rewrite a prompt from one model's format to another. |
+
+The MCP tools share the same logic as the REST routes via `src/lib/services.ts`. Reference
+images should be passed as public URLs where possible (base64 is supported but large over MCP).
+
+Test locally with the MCP Inspector:
+
+```bash
+npx @modelcontextprotocol/inspector
+# connect to http://localhost:3000/api/mcp (Streamable HTTP)
+```
 
 ## Environment variables
 

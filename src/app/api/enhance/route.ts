@@ -2,48 +2,20 @@
  * @file route.ts
  * POST /api/enhance — Takes a raw prompt and optimizes it for the target model.
  *
- * Optional: if reference images were uploaded, runs Gemini vision first to extract
- * visual style cues, then uses them as a style guide during enhancement.
+ * Thin wrapper: rate-limit, then delegate to runEnhance in src/lib/services.ts
+ * (shared with the MCP server). Optional reference images run a vision pass first.
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { callOpenRouterWithFallback, parseJsonResponse, TEXT_MODEL, TEXT_MODEL_FALLBACK, analyzeImagesParallel, toApiErrorResponse, type ImagePayload } from '@/lib/openrouter'
-import { SinglePromptResponseSchema } from '@/lib/schemas'
-import { VisualStyleCues, ImageLabel } from '@/lib/system-prompt'
-import { buildEnhanceSystemPrompt, buildEnhanceUserMessage } from '@/lib/prompt-engine'
-import { TargetModel, GenerationMode, VALID_TARGET_MODELS, VALID_GENERATION_MODES } from '@/lib/model-profiles'
+import { toApiErrorResponse } from '@/lib/openrouter'
+import { runEnhance, type EnhanceRequest } from '@/lib/services'
 import { rateLimit } from '@/lib/rate-limit'
 
 export const maxDuration = 60
 
-export interface EnhanceRequest {
-  prompt: string
-  images?: Array<
-    { type: 'base64'; data: string; mimeType: string } | { type: 'url'; url: string }
-  >
-  targetModel?: TargetModel
-  mode?: GenerationMode
-  imageLabels?: ImageLabel[]
-  cachedVisionCues?: VisualStyleCues
-}
-
-export interface EnhanceResponse {
-  prompt: string
-  visualStyleCues?: VisualStyleCues
-  targetModel: TargetModel
-  mode: GenerationMode
-}
+export type { EnhanceRequest, EnhanceResponse } from '@/lib/services'
 
 export async function POST(request: NextRequest) {
-  const apiKey = process.env.OPENROUTER_API_KEY
-
-  if (!apiKey?.trim()) {
-    return NextResponse.json(
-      { error: 'OPENROUTER_API_KEY is not set. Add it to your .env.local file.' },
-      { status: 500 }
-    )
-  }
-
   const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown'
   const limit = rateLimit(ip)
   if (!limit.success) {
@@ -55,78 +27,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const body: EnhanceRequest = await request.json()
-    const { prompt, images, targetModel: rawTargetModel, mode: rawMode, imageLabels, cachedVisionCues } = body
-
-    if (rawTargetModel && !VALID_TARGET_MODELS.has(rawTargetModel)) {
-      return NextResponse.json({ error: 'Invalid target model.' }, { status: 400 })
-    }
-    if (rawMode && !VALID_GENERATION_MODES.has(rawMode)) {
-      return NextResponse.json({ error: 'Invalid generation mode.' }, { status: 400 })
-    }
-
-    const targetModel: TargetModel = rawTargetModel ?? 'flux-2-klein-9b'
-    const mode: GenerationMode = rawMode ?? 'generate'
-
-    if (!prompt?.trim()) {
-      return NextResponse.json(
-        { error: 'Paste a prompt to enhance.' },
-        { status: 400 }
-      )
-    }
-
-    let visualStyleCues: VisualStyleCues | undefined
-    const hasImages = Array.isArray(images) && images.length > 0
-
-    if (hasImages && images.length > 6) {
-      return NextResponse.json({ error: 'Maximum 6 reference images.' }, { status: 400 })
-    }
-    if (hasImages) {
-      for (const img of images) {
-        if (img.type === 'base64' && img.data.length > 4_000_000) {
-          return NextResponse.json({ error: 'Image too large after compression. Try a smaller source image.' }, { status: 400 })
-        }
-      }
-    }
-
-    // Step 1 (optional): Vision analysis for style reference — parallel per-image
-    if (hasImages && !cachedVisionCues) {
-      const { cues } = await analyzeImagesParallel(
-        images as ImagePayload[],
-        apiKey,
-        20_000,
-      )
-      visualStyleCues = cues
-    } else if (cachedVisionCues) {
-      visualStyleCues = cachedVisionCues
-    }
-
-    // Step 2: Enhance the prompt
-    const userMessage = buildEnhanceUserMessage(prompt, targetModel, mode, visualStyleCues, imageLabels)
-
-    const enhanceResponse = await callOpenRouterWithFallback({
-      model: TEXT_MODEL,
-      apiKey,
-      responseFormat: 'json_object',
-      temperature: 0.4,
-      top_p: 0.85,
-      max_tokens: 4096,
-      timeoutMs: 25_000,
-      messages: [
-        { role: 'system', content: buildEnhanceSystemPrompt(targetModel, mode) },
-        { role: 'user', content: userMessage },
-      ],
-    }, TEXT_MODEL_FALLBACK)
-
-    const parsed = parseJsonResponse(enhanceResponse, SinglePromptResponseSchema)
-
-    const response: EnhanceResponse = {
-      prompt: parsed.prompt,
-      visualStyleCues,
-      targetModel,
-      mode,
-    }
-
-    return NextResponse.json(response)
+    return NextResponse.json(await runEnhance(body))
   } catch (error) {
     const { error: message, code, status } = toApiErrorResponse(error)
     return NextResponse.json({ error: message, code }, { status })

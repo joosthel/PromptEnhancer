@@ -1,5 +1,8 @@
 {
   "functions": {
+    "src/app/api/[transport]/**": {
+      "maxDuration": 300
+    },
     "src/app/api/generate-stream/**": {
       "maxDuration": 300
     },

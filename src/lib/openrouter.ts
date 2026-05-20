@@ -45,6 +45,15 @@ export class ApiError extends Error {
   }
 }
 
+/**
+ * Bad-input error whose message is shown verbatim to the caller (status 400).
+ * Used for request validation in the shared service layer.
+ */
+export class ValidationError extends Error {
+  readonly code: ApiErrorCode = 'VALIDATION'
+  readonly status = 400
+}
+
 /** Classify a raw error from callOpenRouter into an ApiError. */
 function classifyError(error: unknown): ApiError {
   if (error instanceof ApiError) return error
@@ -207,6 +216,9 @@ export async function callOpenRouterWithFallback(
 
 /** Map a caught error to a user-friendly message and status for API responses. */
 export function toApiErrorResponse(error: unknown): { error: string; code: ApiErrorCode; status: number } {
+  if (error instanceof ValidationError) {
+    return { error: error.message, code: error.code, status: error.status }
+  }
   const apiErr = error instanceof ApiError ? error : classifyError(error)
   return { error: apiErr.message, code: apiErr.code, status: apiErr.status }
 }
